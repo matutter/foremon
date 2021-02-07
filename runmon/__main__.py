@@ -35,7 +35,12 @@ def expand_ext(ctx, param, value: Tuple[str]):
 
 
 def before_run(m: Monitor, ev: FileSystemEvent, scripts: List[str]):
-    display_info(f'triggered because {ev.src_path} was {ev.event_type}')
+    path: str = ev.src_path
+    # display relative paths shorter
+    cwd = os.getcwd()
+    if path.startswith(cwd):
+        path = path[len(cwd)+1:]
+    display_info(f'triggered because {path} was {ev.event_type}')
 
 
 def print_version(ctx: Context, param, value):
@@ -72,6 +77,9 @@ def print_version(ctx: Context, param, value):
 @click.option('-V', '--verbose',
               is_flag=True, default=False,
               help='Show details on what is causing restarts.')
+@click.option('-P', '--parallel',
+              is_flag=True, default=False,
+              help='Allow scripts to execute in parallel if changes occur while another is running.')
 @click.option('-x', '--exec',
               multiple=True, default=[], callback=expand_exec,
               help='Script to execute.')
@@ -80,13 +88,13 @@ def print_version(ctx: Context, param, value):
               help='Do not apply the default ignore list (.git, __pycache__/, etc...).')
 @click.argument('args', callback=want_string, nargs=-1)
 def runmon(ext: List[str], watch: List[str], ignore: List[str],
-           verbose: bool, unsafe: bool,
+           verbose: bool, unsafe: bool, parallel: bool,
            exec: List[str], args: str, config_file: str = None):
 
     if not unsafe:
         ignore.extend(['.git/*', '__pycache__/*', '.*'])
 
-    m = Monitor()
+    m = Monitor(parallel=parallel)
 
     set_display_verbose(verbose)
     if verbose:

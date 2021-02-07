@@ -4,7 +4,7 @@ import sys
 from asyncio import BaseEventLoop, Queue
 from asyncio.subprocess import Process, create_subprocess_shell
 from functools import partial
-from typing import Any, Callable, List, Optional, TextIO
+from typing import Any, Callable, List, Optional, Set, TextIO
 
 from watchdog.events import FileSystemEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
@@ -37,8 +37,11 @@ class Monitor:
     queue: Queue
     scripts: List[List[str]]
     stop_timeout: int
+    # used to suppress duplicate events (like create+modify when file is touched)
+    current_files: Set[str]
+    is_parallel: bool
 
-    def __init__(self, pipe=sys.stdin, loop: BaseEventLoop = None):
+    def __init__(self, parallel: bool = False, pipe=sys.stdin, loop: BaseEventLoop = None):
         self.before_run_callbacks = []
         self.scripts = []
         self.stop_timeout = 5
@@ -47,7 +50,9 @@ class Monitor:
         self.current_signal = 0
         self.current_process = None
         self.loop = loop if loop else asyncio.get_event_loop()
-        self.queue = Queue(loop = self.loop)
+        self.queue = Queue(loop=self.loop)
+        self.current_files = set()
+        self.is_parallel = parallel
 
     def add_runner(self,
                    scripts: List[str],
@@ -77,8 +82,7 @@ class Monitor:
             patterns, ignore, ignore_dirs, case_sensitive)
         self.scripts.append(scripts)
         cb = partial(self.on_event, scripts)
-        handler.on_deleted = cb
-        handler.on_modified = cb
+        handler.on_any_event = cb
 
         missing_paths: List[str] = []
         for path in paths:
@@ -92,10 +96,10 @@ class Monitor:
             return False
 
         if missing_paths:
-            display_warning('some paths cannot be watched -' + " ".join(missing_paths))
+            display_warning('some paths cannot be watched -' +
+                            " ".join(missing_paths))
 
         return True
-
 
     async def run_batch(self, batch: List[str]):
         for script in batch:
@@ -118,12 +122,14 @@ class Monitor:
         else:
             display_success('clean exit - waiting for changes before restart')
 
-
-    async def exec_task(self, batch: List[str]):
+    async def exec_task(self, batch: List[str], ev: Optional[FileSystemEvent] = None):
         try:
             await self.run_batch(batch)
         except Exception as e:
             display_error('an exec error occurred', e)
+
+        if ev is not None and ev.src_path in self.current_files:
+            self.current_files.remove(ev.src_path)
 
     async def run_one_script(self, script: str) -> int:
         display_success(f'starting `{script}`')
@@ -143,7 +149,7 @@ class Monitor:
             add_pid(p.pid)
         self.current_process = p
 
-    def signal_process(self, sig:int):
+    def signal_process(self, sig: int):
         if self.current_process:
             self.current_signal = sig
             self.current_process.send_signal(sig)
@@ -160,6 +166,14 @@ class Monitor:
         list(map(self.queue_exec_task, self.scripts[:]))
 
     def on_event(self, batch: List[str], ev: FileSystemEvent):
+
+        if ev.src_path in self.current_files:
+            # Suppress - event being processed on this file
+            display_debug(f'file busy - skipping {ev.event_type} {ev.src_path}')
+            return
+
+        self.current_files.add(ev.src_path)
+
         if not batch:
             return
 
@@ -170,14 +184,14 @@ class Monitor:
                 display_error('encountered pre run error', e)
 
         display_success('restarting due to changes...')
-        self.queue_exec_task(batch)
+        self.queue_exec_task(batch, ev)
 
-    def queue_exec_task(self, batch: List[str]):
+    def queue_exec_task(self, batch: List[str], ev: Optional[FileSystemEvent] = None):
         batch = want_list(batch, [])
         if not batch:
             return
 
-        task = self.loop.create_task(self.exec_task(batch))
+        task = self.loop.create_task(self.exec_task(batch, ev))
         self.loop.call_soon_threadsafe(self.queue.put_nowait, task)
 
     def stop(self):
@@ -202,9 +216,25 @@ class Monitor:
         if not self.start(run_on_start=run_on_start):
             return False
 
-        async def cradle():
+        async def serial_cradle():
+            while True:
+                try:
+                    task = await self.queue.get()
+                    if task == None: break
+                    await task
+                except Exception as e:
+                    display_error('unhandled error', e)
+                    break
+
+        async def parallel_cradle():
             async for task in queueiter(self.queue):
-                await task
+                try:
+                    await task
+                except Exception as e:
+                    display_error('unhandled error', e)
+                    break
+
+        cradle = parallel_cradle if self.is_parallel else serial_cradle
 
         try:
             self.loop.add_reader(self.pipe, self._repl)
@@ -220,7 +250,7 @@ class Monitor:
 
     def _repl(self):
         restart = ['rs', 'restart']
-        quit = ['\q', 'quit', 'exit']
+        quit = ['\\q', 'quit', 'exit']
         def startswith(s, l): return any([s.startswith(i) for i in l])
         line = self.pipe.readline().lower()
 
