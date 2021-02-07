@@ -74,31 +74,35 @@ class Runmon:
         self.p.stdin.write(data)
         await self.p.stdin.drain()
 
-    async def _read_stdout(self):
-        if self._stdout_awaiter:
-            return await self._stdout_awaiter
-        self._stdout_awaiter = asyncio.current_task()
-        if not self.p: return
-        data: bytes = await self.p.stdout.readline()
-        line = data.decode()
-        self.stdout += line
-        self._stdout_awaiter = None
-        line = line.strip()
-        print(line)
-        return line
+    def _read_stdout(self):
+        if self._stdout_awaiter is None:
+            async def read():
+                if not self.p: return
+                data: bytes = await self.p.stdout.readline()
+                line = data.decode()
+                self.stdout += line
+                self._stdout_awaiter = None
+                line = line.strip()
+                print(line)
+                self._stdout_awaiter = None
+                return line
+            self._stdout_awaiter = read()
+        return self._stdout_awaiter
 
-    async def _read_stderr(self):
-        if self._stderr_awaiter:
-            return await self._stderr_awaiter
-        self._stderr_awaiter = asyncio.current_task()
-        if not self.p: return
-        data: bytes = await self.p.stderr.readline()
-        line = data.decode()
-        self.stderr += line
-        self._stderr_awaiter = None
-        line = line.strip()
-        print(line)
-        return line
+    def _read_stderr(self):
+        if self._stderr_awaiter is None:
+            async def read():
+                if not self.p: return
+                data: bytes = await self.p.stderr.readline()
+                line = data.decode()
+                self.stderr += line
+                self._stderr_awaiter = None
+                line = line.strip()
+                print(line)
+                self._stderr_awaiter = None
+                return line
+            self._stderr_awaiter = read()
+        return self._stderr_awaiter
 
     async def expect(self, pattern: str, timeout: float = 5.0) -> bool:
         """
@@ -195,7 +199,6 @@ class Runmon:
 
         return self
 
-
 def mkdirp(path: str) -> None:
     try:
         os.makedirs(path)
@@ -270,5 +273,6 @@ __all__ = [
     'get_code_dir',
     'get_version_file',
     'get_input_dir',
-    'pytestmark'
+    'pytestmark',
+    'pytest'
 ]
