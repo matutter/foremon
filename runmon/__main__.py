@@ -26,6 +26,8 @@ def want_list(ctx, param, value: Tuple[str]):
     [l.extend(re.split(r'[\s,]+', v)) for v in list(value)]
     return l
 
+def expand_exec(ctx, param, value: Tuple[str]):
+    return list(value)
 
 def expand_ext(ctx, param, value: Tuple[str]):
     value = want_list(None, None, value)
@@ -71,7 +73,7 @@ def print_version(ctx: Context, param, value):
               is_flag=True, default=False,
               help='Show details on what is causing restarts.')
 @click.option('-x', '--exec',
-              multiple=True, default=[], callback=want_list,
+              multiple=True, default=[], callback=expand_exec,
               help='Script to execute.')
 @click.option('-u', '--unsafe',
               is_flag=True, default=False,
@@ -86,16 +88,19 @@ def runmon(ext: List[str], watch: List[str], ignore: List[str],
 
     m = Monitor()
 
-    scripts = list(filter(lambda s: s, exec[:] + [args]))
+    set_display_verbose(verbose)
+    if verbose:
+        m.before_run(before_run)
 
+    scripts = list(filter(lambda s: s, exec[:] + [args]))
     if not scripts:
         display_warning("No script or executable specified, nothing to do ...")
         exit(2)
 
-    m.add_runner(scripts, watch, ext, ignore=ignore)
-
-    if verbose:
-        m.before_run(before_run)
+    add_ok = m.add_runner(scripts, watch, ext, ignore=ignore)
+    if not add_ok:
+        # only when all watch paths are missing
+        exit(2)
 
     m.start_interactive()
 
