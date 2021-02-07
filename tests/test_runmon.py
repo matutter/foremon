@@ -1,5 +1,7 @@
 import asyncio
 import os.path as op
+
+import pytest
 from .fixtures import *
 
 
@@ -23,19 +25,11 @@ async def test_watch_one_file(tempfiles:Tempfiles):
   ])
 
   p = await Runmon().spawn('-w', f1, '-e "*"', '-V', '-- rm', f2)
-
-  await asyncio.sleep(.1)
-
+  assert await p.expect(r'starting.*')
   with open(f1, 'w') as fd:
     fd.write('modify')
-
-  await asyncio.sleep(.1)
+  assert await p.expect(r'trigger.*modified')
   await p.stop()
-
-  # rm ../b.txt exited with status == 1
-  assert 'returned 1' in p.stderr
-  # stopped batch script because a non-zero exit
-  assert 'exec stopped' in p.stderr
 
 
 async def test_watch_one_dir(tempfiles:Tempfiles):
@@ -46,16 +40,8 @@ async def test_watch_one_dir(tempfiles:Tempfiles):
   ])
 
   p = await Runmon().spawn('-w', tempfiles.root, '-e "*"', '-V', '-- rm', f2)
-
-  await asyncio.sleep(1)
-
+  assert await p.expect(r'starting.*')
   with open(f1, 'w') as fd:
     fd.write('modify')
-
-  await asyncio.sleep(1)
+  assert await p.expect(r'trigger.*modified')
   await p.stop()
-
-  # rm ../b.txt exited with status == 1
-  assert 'returned 1' in p.stderr
-  # stopped batch script because a non-zero exit
-  assert 'exec stopped' in p.stderr
