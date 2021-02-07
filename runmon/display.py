@@ -1,13 +1,21 @@
 import os
 import sys
 import traceback
-from typing import Optional
+from typing import Any, Optional
 from colors import color as Color256
 
 DISPLAY_NAME = ''
+DISPAY_VERBOSE = False
 
 USE_COLORS = '256' in os.environ.get('TERM', '')
 
+def display_verbose() -> bool:
+  global DISPAY_VERBOSE
+  return DISPAY_VERBOSE
+
+def set_display_verbose(val: bool):
+  global DISPAY_VERBOSE
+  DISPAY_VERBOSE = val
 
 def get_display_name():
     global DISPLAY_NAME
@@ -31,6 +39,7 @@ def display(msg: str, color: Optional[str] = None):
     if prefix:
         prefix = '[' + prefix + ']'
     sys.stderr.write(colored(prefix, msg, color=color) + "\n")
+    sys.stderr.flush()
 
 
 def display_warning(msg: str):
@@ -48,3 +57,10 @@ def display_error(msg: str, e: Exception = None):
       msg = "\n".join(ex)
 
     display(msg, color='red')
+
+def display_success(msg: str):
+  display(msg, 'green')
+
+def display_debug(*msg: Any):
+  if display_verbose():
+    display(' '.join(map(str, msg)), 'blue')
