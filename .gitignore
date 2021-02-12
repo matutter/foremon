@@ -1,6 +1,9 @@
 __pycache__/
 .prod/
 .pytest_cache/
+.test/
 .water/
+*.egg-info
 *.pyc
+build/
 tests/input/

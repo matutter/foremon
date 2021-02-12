@@ -112,7 +112,7 @@ def water(ext: List[str], watch: List[str], ignore: List[str],
 
 
 def main():
-    water.main(prog_name=get_display_name())
+    return water.main(prog_name=get_display_name())
 
 
 if __name__ == '__main__':
