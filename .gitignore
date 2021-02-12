@@ -1,5 +1,6 @@
-.pytest_cache/
 __pycache__/
-.runmon/
-tests/input/
+.prod/
+.pytest_cache/
+.water/
 *.pyc
+tests/input/

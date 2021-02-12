@@ -1,19 +1,17 @@
-import asyncio
 import os
 import os.path as op
 import re
-import sys
-from typing import List, Optional, Tuple, final
+from typing import List, Tuple
 
 import click
 from click.core import Context
-from colors import color as Color256
 from watchdog.events import FileSystemEvent
 
 from .display import *
 from .monitor import Monitor
+from . import __version__
 
-set_display_name('runmon')
+set_display_name('water')
 
 
 def want_string(ctx, param, value: Tuple[str]):
@@ -26,8 +24,10 @@ def want_list(ctx, param, value: Tuple[str]):
     [l.extend(re.split(r'[\s,]+', v)) for v in list(value)]
     return l
 
+
 def expand_exec(ctx, param, value: Tuple[str]):
     return list(value)
+
 
 def expand_ext(ctx, param, value: Tuple[str]):
     value = want_list(None, None, value)
@@ -47,9 +47,7 @@ def print_version(ctx: Context, param, value):
     if not value or ctx.resilient_parsing:
         return
     try:
-        ver_file = op.join(op.dirname(__file__), 'VERSION.txt')
-        with open(ver_file, 'r') as fd:
-            click.echo(fd.read(20).strip())
+        print(__version__)
     except:
         pass
     finally:
@@ -87,9 +85,9 @@ def print_version(ctx: Context, param, value):
               is_flag=True, default=False,
               help='Do not apply the default ignore list (.git, __pycache__/, etc...).')
 @click.argument('args', callback=want_string, nargs=-1)
-def runmon(ext: List[str], watch: List[str], ignore: List[str],
-           verbose: bool, unsafe: bool, parallel: bool,
-           exec: List[str], args: str, config_file: str = None):
+def water(ext: List[str], watch: List[str], ignore: List[str],
+          verbose: bool, unsafe: bool, parallel: bool,
+          exec: List[str], args: str, config_file: str = None):
 
     if not unsafe:
         ignore.extend(['.git/*', '__pycache__/*', '.*'])
@@ -113,5 +111,9 @@ def runmon(ext: List[str], watch: List[str], ignore: List[str],
     m.start_interactive()
 
 
+def main():
+    water.main(prog_name=get_display_name())
+
+
 if __name__ == '__main__':
-    runmon.main(prog_name=get_display_name())
+    main()
