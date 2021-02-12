@@ -1,23 +1,23 @@
 import os
 import os.path as op
 import shutil
-from runmon.display import display_debug
+from water.display import display_debug
 
 from .fixtures import *
 
 
 async def test_help():
-    p = await Runmon().spawn('--help')
+    p = await WaterBootstrap().spawn('--help')
     await p.stop()
     assert '--help' in p.stdout
     assert p.returncode == 0
 
 
 async def test_version():
-    p = await Runmon().spawn('--version')
+    p = await WaterBootstrap().spawn('--version')
     await p.stop()
-    with open(get_version_file(), 'r') as fd:
-        assert fd.read() == p.stdout.strip()
+    from water import __version__
+    assert p.stdout.strip() == __version__
 
 
 async def test_watch_one_file(tempfiles: Tempfiles):
@@ -27,7 +27,7 @@ async def test_watch_one_file(tempfiles: Tempfiles):
         'test/b.txt'
     ])
 
-    p = await Runmon().spawn('-w', f1, '-e "*"', '-V', '-- rm', f2)
+    p = await WaterBootstrap().spawn('-w', f1, '-e "*"', '-V', '-- rm', f2)
     assert await p.expect(r'starting.*')
     assert await p.expect(r'clean exit.*')
     with open(f1, 'w') as fd:
@@ -45,7 +45,7 @@ async def test_watch_one_dir(tempfiles: Tempfiles):
         'test/c.txt'
     ])
 
-    p = await Runmon().spawn('-w', tempfiles.root, '-e "*"', '-V', '-- rm', f2)
+    p = await WaterBootstrap().spawn('-w', tempfiles.root, '-e "*"', '-V', '-- rm', f2)
     assert await p.expect(r'starting.*')
     assert await p.expect(r'clean exit.*')
 

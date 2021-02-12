@@ -18,8 +18,8 @@ from .fixtures import *
 
 pytestmark = getattr(pytest.mark, 'asyncio')
 
-from runmon.atexit_handler import *
-from runmon.display import *
+from water.atexit_handler import *
+from water.display import *
 
 set_display_verbose(True)
 set_display_name('pytest')
@@ -29,7 +29,7 @@ def get_project_root():
 
 
 def get_code_dir():
-    return op.join(get_project_root(), 'runmon')
+    return op.join(get_project_root(), 'water')
 
 
 def get_version_file():
@@ -40,7 +40,7 @@ def get_input_dir():
     return op.join(get_project_root(), 'tests/input')
 
 
-class Runmon:
+class WaterBootstrap:
 
     p: Optional[Process]
     stdout: str
@@ -86,7 +86,7 @@ class Runmon:
                 print(line)
                 self._stdout_awaiter = None
                 return line
-            self._stdout_awaiter = read()
+            self._stdout_awaiter = asyncio.ensure_future(read())
         return self._stdout_awaiter
 
     def _read_stderr(self):
@@ -101,7 +101,7 @@ class Runmon:
                 print(line)
                 self._stderr_awaiter = None
                 return line
-            self._stderr_awaiter = read()
+            self._stderr_awaiter = asyncio.ensure_future(read())
         return self._stderr_awaiter
 
     async def expect(self, pattern: str, timeout: float = 5.0) -> bool:
@@ -114,7 +114,7 @@ class Runmon:
         if not self.p:
             raise Exception('Invalid state, the process is not started')
 
-        prefix = r'^\[runmon\] '
+        prefix = r'^\[water\] '
         pattern: Pattern = re.compile(prefix + pattern, re.IGNORECASE)
         remaining_timeout: float = float(timeout)
         p: Process = self.p
@@ -180,10 +180,10 @@ class Runmon:
     async def input(self, text: str):
         self.p.stdin.write((text+'\n').encode())
 
-    async def spawn(self, *args) -> 'Runmon':
+    async def spawn(self, *args) -> 'WaterBootstrap':
         project_root = get_project_root()
         cmd: str = ' '.join(
-            [sys.executable, '-m', 'runmon'] + list(map(str, args)))
+            [sys.executable, '-m', 'water'] + list(map(str, args)))
 
         display_debug('SPAWN', cmd)
 
@@ -267,7 +267,7 @@ def tempfiles(request: SubRequest) -> Tempfiles:
 __all__ = [
     'tempfiles',
     'Tempfiles',
-    'Runmon',
+    'WaterBootstrap',
     'mkdirp',
     'get_project_root',
     'get_code_dir',
