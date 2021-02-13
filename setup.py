@@ -20,7 +20,11 @@ version = read('water/__init__.py', r'__version__ = "([^"]+)"')
 long_description = read('README.md')
 
 # Dependencies from requirements
-install_requires = read('requirements.txt')
+install_requires = """
+ansicolors>=1.1.8
+click>=7.1.2
+watchdog>=1.0.2
+"""
 
 setup(
   name="water",
@@ -71,6 +75,7 @@ setup(
   ],
   packages=find_packages(include=['water']),
   install_requires=install_requires,
+  requires=re.findall(r'^\w+', install_requires, re.MULTILINE),
   cmdclass={
     'build_ext': build_ext,
   },
