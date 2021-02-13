@@ -56,21 +56,26 @@ jobs:
             python: "3.6"
             os: ubuntu-latest
             tox_env: "py36"
+
           - name: "ubuntu-py37"
             python: "3.7"
             os: ubuntu-latest
             tox_env: "py37"
-          - python: "3.8"
+
+          - name: "ubuntu-py38"
+            python: "3.8"
             os: ubuntu-latest
             tox_env: "py38"
+
           - name: "ubuntu-py39"
             python: "3.9"
             os: ubuntu-latest
             tox_env: "py39"
-          - name: "ubuntu-py39"
-            python: "3.10"
-            os: ubuntu-latest
-            tox_env: "py310"
+
+          # - name: "ubuntu-py310"
+          #   python: "3.10"
+          #   os: ubuntu-latest
+          #   tox_env: "py310"
     steps:
     - uses: actions/checkout@v2
       with:
