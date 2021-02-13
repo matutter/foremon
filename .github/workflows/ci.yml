@@ -99,7 +99,7 @@ jobs:
 
   coverage:
     needs: [build]
-    name: Coverage on linux
+    name: coverage
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2

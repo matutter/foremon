@@ -84,7 +84,10 @@ class Monitor:
             patterns, ignore, ignore_dirs, case_sensitive)
         self.scripts.append(scripts)
         cb = partial(self.on_event, scripts)
-        handler.on_any_event = cb
+        handler.on_created = cb
+        handler.on_deleted = cb
+        handler.on_modified = cb
+        handler.on_moved = cb
 
         missing_paths: List[str] = []
         for path in paths:
