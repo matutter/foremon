@@ -1,3 +1,5 @@
+from water.display import *
+from water.atexit_handler import *
 import asyncio
 from asyncio.tasks import ALL_COMPLETED, FIRST_COMPLETED, Task
 import errno
@@ -18,11 +20,10 @@ from .fixtures import *
 
 pytestmark = getattr(pytest.mark, 'asyncio')
 
-from water.atexit_handler import *
-from water.display import *
 
 set_display_verbose(True)
 set_display_name('pytest')
+
 
 def get_project_root():
     return op.realpath(op.join(op.dirname(__file__), '..'))
@@ -47,13 +48,15 @@ class WaterBootstrap:
     stderr: str
     _stdout_awaiter: Task
     _stderr_awaiter: Task
+    coverage: bool
 
-    def __init__(self):
+    def __init__(self, coverage: bool = False):
         self.p = None
         self.stdout = ''
         self.stderr = ''
         self._stdout_awaiter = None
         self._stderr_awaiter = None
+        self.coverage = coverage
 
     @property
     def returncode(self) -> int:
@@ -68,16 +71,20 @@ class WaterBootstrap:
             self.p.send_signal(signal=sig)
 
     async def _write_stdin(self, s: str, eof: bool = False):
-        if not self.p: return
+        if not self.p:
+            return
         print(s)
         data = (s+"\n").encode()
         self.p.stdin.write(data)
         await self.p.stdin.drain()
+        if eof:
+            self.p.stdin.write_eof()
 
     def _read_stdout(self):
         if self._stdout_awaiter is None:
             async def read():
-                if not self.p: return
+                if not self.p:
+                    return
                 data: bytes = await self.p.stdout.readline()
                 line = data.decode()
                 self.stdout += line
@@ -92,7 +99,8 @@ class WaterBootstrap:
     def _read_stderr(self):
         if self._stderr_awaiter is None:
             async def read():
-                if not self.p: return
+                if not self.p:
+                    return
                 data: bytes = await self.p.stderr.readline()
                 line = data.decode()
                 self.stderr += line
@@ -150,12 +158,14 @@ class WaterBootstrap:
     async def stop(self):
         await self._write_stdin('exit', True)
 
+        p: Process = self.p
+
         stderr = self._read_stderr()
         stdout = self._read_stdout()
-        wait: Coroutine = self.p.wait()
+        wait: Coroutine = p.wait()
         pending = []
 
-        while self.p.returncode is None:
+        while p.returncode is None:
 
             complete, pending = await asyncio.wait([wait, stderr, stdout], timeout=5.0, return_when=FIRST_COMPLETED)
 
@@ -170,20 +180,35 @@ class WaterBootstrap:
         if pending:
             await asyncio.wait(pending, return_when=ALL_COMPLETED)
 
-        stdout, stderr = await self.p.communicate()
+        stdout, stderr = await p.communicate()
         stdout = stdout.decode()
         stderr = stderr.decode()
         self.stdout += stdout
         self.stderr += stderr
-        remove_pid(self.p.pid)
+        remove_pid(p.pid)
 
     async def input(self, text: str):
         self.p.stdin.write((text+'\n').encode())
 
+    def reset(self):
+        self.p = None
+        self.stdout = ''
+        self.stderr = ''
+        self._stdout_awaiter = None
+        self._stderr_awaiter = None
+
     async def spawn(self, *args) -> 'WaterBootstrap':
+        self.reset()
         project_root = get_project_root()
-        cmd: str = ' '.join(
-            [sys.executable, '-m', 'water'] + list(map(str, args)))
+
+        if self.coverage:
+            # append coverage to .coverage every time this executes
+            executable = [sys.executable, '-m', 'coverage', 'run', '-a', '--include="water/*"']
+        else:
+            executable = [sys.executable]
+
+        args = list(map(str, args))
+        cmd: str = ' '.join(executable + ['-m', 'water'] + args)
 
         display_debug('SPAWN', cmd)
 
@@ -198,6 +223,7 @@ class WaterBootstrap:
         add_pid(self.p.pid)
 
         return self
+
 
 def mkdirp(path: str) -> None:
     try:
@@ -241,7 +267,7 @@ class Tempfiles:
             if p.endswith('/'):
                 self.make_dir(p)
             else:
-              self.make_file(p)
+                self.make_file(p)
 
         self._fix_files()
 
@@ -254,18 +280,36 @@ class Tempfiles:
             pass
 
     def _fix_files(self):
-      self.files = sorted(list(set(self.files[:])))
-      self.dirs = sorted(list(set(self.dirs[:])))
+        self.files = sorted(list(set(self.files[:])))
+        self.dirs = sorted(list(set(self.dirs[:])))
+
+
+@pytest.fixture
+async def bootstrap(request: SubRequest) -> WaterBootstrap:
+    coverage = request.config.getoption('--coverage')
+    bs = WaterBootstrap(coverage=coverage)
+    return bs
+
 
 @pytest.fixture
 def tempfiles(request: SubRequest) -> Tempfiles:
-  t = Tempfiles()
-  request.addfinalizer(t.cleanup)
-  return t
+    t = Tempfiles()
+    request.addfinalizer(t.cleanup)
+    return t
+
 
 @pytest.fixture
 def sampledir():
     return op.join(op.dirname(__file__), 'samples')
+
+@pytest.fixture(scope='session', autouse=True)
+def cleanup_old_coverage(request: SubRequest):
+    if request.config.getoption('--coverage'):
+        try:
+            coverage_file = op.join(get_project_root(), '.coverage')
+            os.remove(coverage_file)
+        except:
+            pass
 
 __all__ = [
     'tempfiles',
@@ -278,5 +322,7 @@ __all__ = [
     'get_input_dir',
     'pytestmark',
     'pytest',
-    'sampledir'
+    'sampledir',
+    'SubRequest',
+    'bootstrap'
 ]
