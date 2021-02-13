@@ -40,6 +40,7 @@ class Monitor:
     # used to suppress duplicate events (like create+modify when file is touched)
     current_files: Set[str]
     is_parallel: bool
+    is_terminating: bool
 
     def __init__(self, parallel: bool = False, pipe=sys.stdin, loop: BaseEventLoop = None):
         self.before_run_callbacks = []
@@ -53,6 +54,7 @@ class Monitor:
         self.queue = Queue(loop=self.loop)
         self.current_files = set()
         self.is_parallel = parallel
+        self.is_terminating = False
 
     def add_runner(self,
                    scripts: List[str],
@@ -101,6 +103,12 @@ class Monitor:
 
         return True
 
+    def get_exit_message(self, msg: str, extra: str):
+        if self.is_terminating:
+            return msg
+        else:
+            return ' - '.join([msg, extra])
+
     async def run_batch(self, batch: List[str]):
         for script in batch:
             try:
@@ -113,14 +121,15 @@ class Monitor:
                 elif -code == self.current_signal:
                     pass
                 else:
-                    display_error(
-                        f'app crashed {code} - waiting for file changes before starting...')
+                    display_error(self.get_exit_message(
+                        f'app crashed {code}', 'waiting for file changes before starting...'))
                     break
             except Exception as e:
                 display_error(f'exec error', e)
                 break
         else:
-            display_success('clean exit - waiting for changes before restart')
+            display_success(self.get_exit_message(
+                'clean exit', 'waiting for changes before restart'))
 
     async def exec_task(self, batch: List[str], ev: Optional[FileSystemEvent] = None):
         try:
@@ -195,9 +204,20 @@ class Monitor:
         self.loop.call_soon_threadsafe(self.queue.put_nowait, task)
 
     def stop(self):
+        self.is_terminating = True
         self.observer.stop()
         if self.observer.isAlive():
             self.observer.join(self.stop_timeout)
+
+        p = self.current_process
+        if p:
+            try:
+                # BUG: This has no effect when run via py.test, but works from command-line.
+                self.current_signal = signal.SIGKILL
+                display_warning(f'terminating {p.pid}')
+                p.kill()
+            except Exception as e:
+                pass
 
     def start(self, run_on_start: bool = True) -> bool:
         if not self.scripts:
