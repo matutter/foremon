@@ -27,7 +27,7 @@ watchdog>=1.0.2
 """
 
 setup(
-  name="water",
+  name="pywater",
   version=version,
   description="water - watch execute repeat",
   long_description=long_description,

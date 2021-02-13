@@ -22,7 +22,7 @@ water is currently in beta.
 Clone `water` with git or install it using [pip][pip] (recommended):
 
 ```bash
-pip install water
+pip install pywater
 ```
 
 [pip]: https://packaging.python.org/tutorials/installing-packages/#use-pip-for-installing

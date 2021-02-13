@@ -11,3 +11,4 @@ tests/input/
 htmlcov/
 tox.ini
 .tox/
+dist/
