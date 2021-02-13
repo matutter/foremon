@@ -9,6 +9,8 @@ from water.display import display_debug
 
 from .fixtures import *
 
+CLEAN_EXIT = r'clean exit.*'
+ANY_EXIT   = r'(app crashed|clean exit).*'
 
 async def test_help(bootstrap: WaterBootstrap):
     p = await bootstrap.spawn('--help')
@@ -26,18 +28,17 @@ async def test_version(bootstrap: WaterBootstrap):
 
 async def test_watch_one_file(bootstrap: WaterBootstrap, tempfiles: Tempfiles):
 
-    f1, f2 = tempfiles.make_files([
+    f1, = tempfiles.make_files([
         'test/a.txt',
-        'test/b.txt'
     ])
 
-    p = await bootstrap.spawn('-w', f1, '-e "*"', '-V', '-- rm', f2)
+    p = await bootstrap.spawn('-n -w', f1, '-e "*"', '-V', '-- test -f', f1)
     assert await p.expect(r'starting.*')
     assert await p.expect(r'clean exit.*')
     with open(f1, 'w') as fd:
         fd.write('modify')
     assert await p.expect(r'trigger.*modified')
-    assert await p.expect(r'app crashed.*')
+    assert await p.expect(r'clean exit.*')
     await p.stop()
 
 
@@ -49,7 +50,7 @@ async def test_watch_one_dir(bootstrap: WaterBootstrap, tempfiles: Tempfiles):
         'test/c.txt'
     ])
 
-    p = await bootstrap.spawn('-w', tempfiles.root, '-e "*"', '-V', '-- rm', f2)
+    p = await bootstrap.spawn('-n -w', tempfiles.root, '-e "*"', '-V', '-- test -f', f3)
     assert await p.expect(r'starting.*')
     assert await p.expect(r'clean exit.*')
 
@@ -58,7 +59,7 @@ async def test_watch_one_dir(bootstrap: WaterBootstrap, tempfiles: Tempfiles):
         fd.write('modify')
 
     assert await p.expect(r'trigger.*modified')
-    assert await p.expect(r'app crashed.*')
+    assert await p.expect(r'clean exit.*')
 
     display_debug('deleting a file')
     os.unlink(f3)
