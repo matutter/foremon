@@ -11,52 +11,45 @@ on:
 
 jobs:
   test-linux:
-    name: test py${{ matrix.python-version }} on linux
-    runs-on: ubuntu-latest
+    name: test py${{ matrix.os }} on linux
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.6', '3.7', '3.8', '3.9']
-    env:
-      PYTHON: ${{ matrix.python-version }}
-      OS: ubuntu
+        name: [ "ubuntu-py36",
+                "ubuntu-py37",
+                "ubuntu-py38",
+                "ubuntu-py39"]
+        include:
+          - name: "ubuntu-py36"
+            python: "3.6"
+            os: ubuntu-latest
+            tox_env: "py36"
+          - name: "ubuntu-py37"
+            python: "3.7"
+            os: ubuntu-latest
+            tox_env: "py37"
+          - python: "3.8"
+            os: ubuntu-latest
+            tox_env: "py38"
+          - name: "ubuntu-py39"
+            python: "3.9"
+            os: ubuntu-latest
+            tox_env: "py39-xdist"
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
-      - uses: actions/setup-python@v2
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip wheel && pip install -r requirements.txt
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip wheel
+        pip install tox coverage
 
-      - name: Run PyTest
-        run: |
-          py.test --coverage -v
-
-      - name: Make coverage report
-        run: |
-          coverage report
-
-#   deploy:
-#     runs-on: ubuntu-latest
-
-#     steps:
-#     - uses: actions/checkout@v2
-
-#     - name: Set up Python
-#       uses: actions/setup-python@v2
-#       with:
-#         python-version: '3.8'
-
-#     - name: Install dependencies
-#       run: |
-#         python -m pip install --upgrade pip wheel
-#         pip install setuptools wheel twine
-
-#     - name: Build and publish
-#       env:
-#         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-#         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-#       run: |
-#         python setup.py sdist bdist_wheel
-#         twine upload dist/*
+    - name: Test with coverage
+      run: "tox -e ${{ matrix.tox_env }}"
