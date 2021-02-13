@@ -10,6 +10,22 @@ on:
   pull_request: {}
 
 jobs:
+
+  env-check:
+    if: github.repository == 'matutter/water'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: pypi
+    steps:
+
+    - name: Check environment variables
+      run: |
+        test -n "$TWINE_USERNAME" && echo TWINE_USERNAME OK
+        test -n "$TWINE_PASSWORD" && echo TWINE_PASSWORD OK
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPY_TOKEN }}
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -125,7 +141,8 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'matutter/water'
     needs: [build, test, coverage]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+    environment: pypi
     steps:
     - uses: actions/checkout@v2
       with:
