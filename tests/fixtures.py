@@ -82,7 +82,7 @@ class WaterBootstrap:
                 line = data.decode()
                 self.stdout += line
                 self._stdout_awaiter = None
-                line = line.strip()
+                line = line.rstrip()
                 print(line)
                 self._stdout_awaiter = None
                 return line
@@ -97,7 +97,7 @@ class WaterBootstrap:
                 line = data.decode()
                 self.stderr += line
                 self._stderr_awaiter = None
-                line = line.strip()
+                line = line.rstrip()
                 print(line)
                 self._stderr_awaiter = None
                 return line
@@ -263,6 +263,9 @@ def tempfiles(request: SubRequest) -> Tempfiles:
   request.addfinalizer(t.cleanup)
   return t
 
+@pytest.fixture
+def sampledir():
+    return op.join(op.dirname(__file__), 'samples')
 
 __all__ = [
     'tempfiles',
@@ -274,5 +277,6 @@ __all__ = [
     'get_version_file',
     'get_input_dir',
     'pytestmark',
-    'pytest'
+    'pytest',
+    'sampledir'
 ]
