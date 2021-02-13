@@ -100,10 +100,10 @@ jobs:
         python-version: "3.8"
 
     - name: Download disk artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: pypi_files
-          path: dist
+      uses: actions/download-artifact@v2
+      with:
+        name: pypi_files
+        path: dist
 
     - name: Install dependencies
       run: |
