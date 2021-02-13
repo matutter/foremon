@@ -156,4 +156,4 @@ jobs:
         twine upload dist/*
       env:
         TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.access_token }}
+        TWINE_PASSWORD: ${{ secrets.ACCESS_TOKEN }}
