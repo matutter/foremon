@@ -10,6 +10,18 @@ on:
   pull_request: {}
 
 jobs:
+  env-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+
+    - run: |
+        echo $SECRET1 | wc
+        echo $SECRET2 | wc
+      env:
+        SECRET1: ${{ secrets.ACCESS_TOKEN }}
+        SECRET2: __token__
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
