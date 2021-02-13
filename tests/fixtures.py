@@ -163,7 +163,8 @@ class WaterBootstrap:
 
         stderr = self._read_stderr()
         stdout = self._read_stdout()
-        wait: Coroutine = asyncio.create_task(p.wait())
+        loop = asyncio.get_event_loop()
+        wait: Coroutine = loop.create_task(p.wait())
         pending = []
 
         while p.returncode is None:
@@ -219,7 +220,7 @@ class WaterBootstrap:
             cwd=project_root,
             shell=True,
             encoding=None,
-            env={'TERM': 'mono'})
+            env={'TERM': 'mono', 'LC_ALL': 'C.UTF-8', 'LANG': 'C.UTF-8'})
 
         add_pid(self.p.pid)
 
