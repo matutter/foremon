@@ -41,6 +41,7 @@ jobs:
 
   test:
     needs: [build]
+    timeout-minutes: 15
     name: test ${{ matrix.tox_env }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -84,7 +85,7 @@ jobs:
         # default is 5, but we are sensitive to IO and task lag on runners
         EXPECT_TIMEOUT: "15.0"
 
-    - name: Test with coverage
+    - name: Run tox
       run: "tox -e ${{ matrix.tox_env }}"
 
   coverage:
