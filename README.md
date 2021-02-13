@@ -4,9 +4,9 @@ water is a tool to help develop python projects by executing build tasks when
 file changes are detected.
 
 water intends to have feature parity to [nodemon][nodemon], a similar tool for
-the NodeJS ecosystem, but provide those features within a python tool toolchain.
-To use `water` run your script or module as `water <script or module here>` or
-run `water --help` for advanced usage.
+the NodeJS ecosystem, but provide those features within a python toolchain. To
+use `water` run your script or module as `water [script or module]` or run
+`water --help` for advanced usage.
 
 File monitoring for water is provided by [watchdog][watchdog] which provides its
 own shell-utility, [watchmedo][watchmedo].
@@ -29,11 +29,11 @@ pip install water
 
 # Usage
 
-water will bootstrap your module or script with the argument you normally pass
-to you app:
+water will bootstrap your module or script with the arguments you normally pass
+to it:
 
 ```bash
-water [script or module]
+water [script or module] [args]
 ```
 
 For CLI options, use `-h` or `--help`:
