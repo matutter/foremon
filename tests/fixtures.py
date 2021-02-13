@@ -20,6 +20,7 @@ from .fixtures import *
 
 pytestmark = getattr(pytest.mark, 'asyncio')
 
+EXPECT_TIMEOUT = float(os.environ.get('EXPECT_TIMEOUT', '5.0'))
 
 set_display_verbose(True)
 set_display_name('pytest')
@@ -73,7 +74,7 @@ class WaterBootstrap:
     async def _write_stdin(self, s: str, eof: bool = False):
         if not self.p:
             return
-        print(s)
+        if s: print(s)
         data = (s+"\n").encode()
         self.p.stdin.write(data)
         await self.p.stdin.drain()
@@ -90,7 +91,7 @@ class WaterBootstrap:
                 self.stdout += line
                 self._stdout_awaiter = None
                 line = line.rstrip()
-                print(line)
+                if line: print(line)
                 self._stdout_awaiter = None
                 return line
             self._stdout_awaiter = asyncio.ensure_future(read())
@@ -106,13 +107,13 @@ class WaterBootstrap:
                 self.stderr += line
                 self._stderr_awaiter = None
                 line = line.rstrip()
-                print(line)
+                if line: print(line)
                 self._stderr_awaiter = None
                 return line
             self._stderr_awaiter = asyncio.ensure_future(read())
         return self._stderr_awaiter
 
-    async def expect(self, pattern: str, timeout: float = 5.0) -> bool:
+    async def expect(self, pattern: str, timeout: float = EXPECT_TIMEOUT) -> bool:
         """
         Expect matching text on stderr or stdout within a given timeframe. If
         the timeframe is exceeded without the expected output matching False is
@@ -162,12 +163,13 @@ class WaterBootstrap:
 
         stderr = self._read_stderr()
         stdout = self._read_stdout()
-        wait: Coroutine = p.wait()
+        loop = asyncio.get_event_loop()
+        wait: Coroutine = loop.create_task(p.wait())
         pending = []
 
         while p.returncode is None:
 
-            complete, pending = await asyncio.wait([wait, stderr, stdout], timeout=5.0, return_when=FIRST_COMPLETED)
+            complete, pending = await asyncio.wait({wait, stderr, stdout}, timeout=EXPECT_TIMEOUT, return_when=FIRST_COMPLETED)
 
             if wait in complete:
                 break
@@ -218,7 +220,7 @@ class WaterBootstrap:
             cwd=project_root,
             shell=True,
             encoding=None,
-            env={'TERM': 'mono'})
+            env={'TERM': 'mono', 'LC_ALL': 'C.UTF-8', 'LANG': 'C.UTF-8'})
 
         add_pid(self.p.pid)
 

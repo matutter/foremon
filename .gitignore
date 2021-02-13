@@ -9,3 +9,5 @@ build/
 tests/input/
 .coverage
 htmlcov/
+tox.ini
+.tox/

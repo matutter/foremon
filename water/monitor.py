@@ -84,7 +84,10 @@ class Monitor:
             patterns, ignore, ignore_dirs, case_sensitive)
         self.scripts.append(scripts)
         cb = partial(self.on_event, scripts)
-        handler.on_any_event = cb
+        handler.on_created = cb
+        handler.on_deleted = cb
+        handler.on_modified = cb
+        handler.on_moved = cb
 
         missing_paths: List[str] = []
         for path in paths:
@@ -206,7 +209,7 @@ class Monitor:
     def stop(self):
         self.is_terminating = True
         self.observer.stop()
-        if self.observer.isAlive():
+        if self.observer.is_alive():
             self.observer.join(self.stop_timeout)
 
         p = self.current_process
@@ -223,7 +226,7 @@ class Monitor:
         if not self.scripts:
             return False
 
-        if self.observer.isAlive():
+        if self.observer.is_alive():
             return False
 
         if run_on_start:
