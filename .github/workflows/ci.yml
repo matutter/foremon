@@ -41,7 +41,7 @@ jobs:
 
   test:
     needs: [build]
-    name: test py${{ matrix.os }} on linux
+    name: test ${{ matrix.tox_env }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -80,6 +80,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip wheel
         pip install tox coverage
+      env:
+        # default is 5, but we are sensitive to IO and task lag on runners
+        EXPECT_TIMEOUT: "15.0"
 
     - name: Test with coverage
       run: "tox -e ${{ matrix.tox_env }}"

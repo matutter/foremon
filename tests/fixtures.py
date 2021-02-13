@@ -20,6 +20,7 @@ from .fixtures import *
 
 pytestmark = getattr(pytest.mark, 'asyncio')
 
+EXPECT_TIMEOUT = float(os.environ.get('EXPECT_TIMEOUT', '5.0'))
 
 set_display_verbose(True)
 set_display_name('pytest')
@@ -112,7 +113,7 @@ class WaterBootstrap:
             self._stderr_awaiter = asyncio.ensure_future(read())
         return self._stderr_awaiter
 
-    async def expect(self, pattern: str, timeout: float = 5.0) -> bool:
+    async def expect(self, pattern: str, timeout: float = EXPECT_TIMEOUT) -> bool:
         """
         Expect matching text on stderr or stdout within a given timeframe. If
         the timeframe is exceeded without the expected output matching False is
@@ -167,7 +168,7 @@ class WaterBootstrap:
 
         while p.returncode is None:
 
-            complete, pending = await asyncio.wait([wait, stderr, stdout], timeout=5.0, return_when=FIRST_COMPLETED)
+            complete, pending = await asyncio.wait([wait, stderr, stdout], timeout=EXPECT_TIMEOUT, return_when=FIRST_COMPLETED)
 
             if wait in complete:
                 break
