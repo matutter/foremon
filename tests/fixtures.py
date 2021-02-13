@@ -74,7 +74,7 @@ class WaterBootstrap:
     async def _write_stdin(self, s: str, eof: bool = False):
         if not self.p:
             return
-        print(s)
+        if s: print(s)
         data = (s+"\n").encode()
         self.p.stdin.write(data)
         await self.p.stdin.drain()
@@ -91,7 +91,7 @@ class WaterBootstrap:
                 self.stdout += line
                 self._stdout_awaiter = None
                 line = line.rstrip()
-                print(line)
+                if line: print(line)
                 self._stdout_awaiter = None
                 return line
             self._stdout_awaiter = asyncio.ensure_future(read())
@@ -107,7 +107,7 @@ class WaterBootstrap:
                 self.stderr += line
                 self._stderr_awaiter = None
                 line = line.rstrip()
-                print(line)
+                if line: print(line)
                 self._stderr_awaiter = None
                 return line
             self._stderr_awaiter = asyncio.ensure_future(read())
@@ -163,12 +163,12 @@ class WaterBootstrap:
 
         stderr = self._read_stderr()
         stdout = self._read_stdout()
-        wait: Coroutine = p.wait()
+        wait: Coroutine = asyncio.create_task(p.wait())
         pending = []
 
         while p.returncode is None:
 
-            complete, pending = await asyncio.wait([wait, stderr, stdout], timeout=EXPECT_TIMEOUT, return_when=FIRST_COMPLETED)
+            complete, pending = await asyncio.wait({wait, stderr, stdout}, timeout=EXPECT_TIMEOUT, return_when=FIRST_COMPLETED)
 
             if wait in complete:
                 break
