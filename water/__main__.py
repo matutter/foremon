@@ -88,7 +88,8 @@ def guess_args(args: str) -> str:
         if spec is not None:
             argv = [relative_if_cwd(sys.executable), '-m'] + argv
 
-    return shlex.join(argv)
+    # shlex.join not in py3.7
+    return " ".join(argv)
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
