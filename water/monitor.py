@@ -206,7 +206,7 @@ class Monitor:
     def stop(self):
         self.is_terminating = True
         self.observer.stop()
-        if self.observer.isAlive():
+        if self.observer.is_alive():
             self.observer.join(self.stop_timeout)
 
         p = self.current_process
@@ -223,7 +223,7 @@ class Monitor:
         if not self.scripts:
             return False
 
-        if self.observer.isAlive():
+        if self.observer.is_alive():
             return False
 
         if run_on_start:
