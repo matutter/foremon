@@ -19,7 +19,7 @@ jobs:
         echo $SECRET1 | wc
         echo $SECRET2 | wc
       env:
-        SECRET1: ${{ secrets.ACCESS_TOKEN }}
+        SECRET1: ${{ secrets.PYPY_TOKEN }}
         SECRET2: __token__
 
   build:
@@ -168,4 +168,4 @@ jobs:
         twine upload dist/*
       env:
         TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.ACCESS_TOKEN }}
+        TWINE_PASSWORD: ${{ secrets.PYPY_TOKEN }}
