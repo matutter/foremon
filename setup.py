@@ -29,7 +29,7 @@ watchdog>=1.0.2
 setup(
   name="water",
   version=version,
-  description="Task automation based on filesystem changes",
+  description="water - watch execute repeat",
   long_description=long_description,
   long_description_content_type='text/markdown',
   author="Mathew Utter",
