@@ -18,7 +18,7 @@ def remove_pid(pid: int):
         CHILD_PIDS.remove(pid)
 
 
-def kill_pid(pid: int, sig: str = None, group: bool = True) -> None:
+def kill_pid(pid: int, sig: str = None, group: bool = False) -> None:
     try:
         pgid = os.getpgid(pid)
         display_debug('sending', sig,
