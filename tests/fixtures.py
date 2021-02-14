@@ -1,5 +1,5 @@
-from water.display import *
-from water.atexit_handler import *
+from foremon.display import *
+from foremon.atexit_handler import *
 import asyncio
 from asyncio.tasks import ALL_COMPLETED, FIRST_COMPLETED, Task
 import errno
@@ -31,7 +31,7 @@ def get_project_root():
 
 
 def get_code_dir():
-    return op.join(get_project_root(), 'water')
+    return op.join(get_project_root(), 'foremon')
 
 
 def get_version_file():
@@ -42,7 +42,7 @@ def get_input_dir():
     return op.join(get_project_root(), 'tests/input')
 
 
-class WaterBootstrap:
+class Bootstrap:
 
     p: Optional[Process]
     stdout: str
@@ -123,7 +123,7 @@ class WaterBootstrap:
         if not self.p:
             raise Exception('Invalid state, the process is not started')
 
-        prefix = r'^\[water\] '
+        prefix = r'^\[foremon\] '
         pattern: Pattern = re.compile(prefix + pattern, re.IGNORECASE)
         remaining_timeout: float = float(timeout)
         p: Process = self.p
@@ -199,18 +199,18 @@ class WaterBootstrap:
         self._stdout_awaiter = None
         self._stderr_awaiter = None
 
-    async def spawn(self, *args) -> 'WaterBootstrap':
+    async def spawn(self, *args) -> 'Bootstrap':
         self.reset()
         project_root = get_project_root()
 
         if self.coverage:
             # append coverage to .coverage every time this executes
-            executable = [sys.executable, '-m', 'coverage', 'run', '-a', '--include="water/*"']
+            executable = [sys.executable, '-m', 'coverage', 'run', '-a', '--include="foremon/*"']
         else:
             executable = [sys.executable]
 
         args = list(map(str, args))
-        cmd: str = ' '.join(executable + ['-m', 'water'] + args)
+        cmd: str = ' '.join(executable + ['-m', 'foremon'] + args)
 
         display_debug('SPAWN', cmd)
 
@@ -287,9 +287,9 @@ class Tempfiles:
 
 
 @pytest.fixture
-async def bootstrap(request: SubRequest) -> WaterBootstrap:
+async def bootstrap(request: SubRequest) -> Bootstrap:
     coverage = request.config.getoption('--coverage')
-    bs = WaterBootstrap(coverage=coverage)
+    bs = Bootstrap(coverage=coverage)
     return bs
 
 
@@ -316,7 +316,7 @@ def cleanup_old_coverage(request: SubRequest):
 __all__ = [
     'tempfiles',
     'Tempfiles',
-    'WaterBootstrap',
+    'Bootstrap',
     'mkdirp',
     'get_project_root',
     'get_code_dir',

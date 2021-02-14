@@ -13,7 +13,7 @@ from . import __version__
 from .display import *
 from .monitor import Monitor
 
-set_display_name('water')
+set_display_name('foremon')
 
 
 def want_string(ctx, param, value: Tuple[str]):
@@ -128,7 +128,7 @@ def guess_args(args: str) -> str:
 @click.option('-C', '--chdir',
               help='Change to this directory before starting.')
 @click.argument('args', callback=want_string, nargs=-1)
-def water(ext: List[str], watch: List[str], ignore: List[str],
+def foremon(ext: List[str], watch: List[str], ignore: List[str],
           verbose: bool, unsafe: bool, parallel: bool, no_guess: bool,
           exec: List[str], args: str,
           config_file: str = None, chdir: Optional[str] = None,):
@@ -162,7 +162,7 @@ def water(ext: List[str], watch: List[str], ignore: List[str],
 
 
 def main():
-    return water.main(prog_name=get_display_name())
+    return foremon.main(prog_name=get_display_name())
 
 
 if __name__ == '__main__':

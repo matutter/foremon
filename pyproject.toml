@@ -1,0 +1,17 @@
+# For building this project
+[build-system]
+requires = [ "setuptools>=42", "wheel" ]
+build-backend = "setuptools.build_meta"
+
+# For developing this project
+[tool.foremon]
+ext = ["*.py"]
+paths = ["tests/*", "foremon/*"]
+ignore = ["dist/*", "build/*"]
+
+  [tool.foremon.build]
+  exec = ["python -m build"]
+
+  [tool.foremon.clean]
+  exec = ["rm -rf *.egg-info build dist .coverage"]
+  once = true

@@ -5,28 +5,28 @@ import os.path as op
 import shutil
 import signal
 import sys
-from water.display import display_debug
+from foremon.display import display_debug
 
 from .fixtures import *
 
 CLEAN_EXIT = r'clean exit.*'
 ANY_EXIT   = r'(app crashed|clean exit).*'
 
-async def test_help(bootstrap: WaterBootstrap):
+async def test_help(bootstrap: Bootstrap):
     p = await bootstrap.spawn('--help')
     await p.stop()
     assert '--help' in p.stdout
     assert p.returncode == 0
 
 
-async def test_version(bootstrap: WaterBootstrap):
+async def test_version(bootstrap: Bootstrap):
     p = await bootstrap.spawn('--version')
     await p.stop()
-    from water import __version__
+    from foremon import __version__
     assert p.stdout.strip() == __version__
 
 
-async def test_watch_one_file(bootstrap: WaterBootstrap, tempfiles: Tempfiles):
+async def test_watch_one_file(bootstrap: Bootstrap, tempfiles: Tempfiles):
 
     f1, = tempfiles.make_files([
         'test/a.txt',
@@ -42,7 +42,7 @@ async def test_watch_one_file(bootstrap: WaterBootstrap, tempfiles: Tempfiles):
     await p.stop()
 
 
-async def test_watch_one_dir(bootstrap: WaterBootstrap, tempfiles: Tempfiles):
+async def test_watch_one_dir(bootstrap: Bootstrap, tempfiles: Tempfiles):
 
     f1, f2, f3 = tempfiles.make_files([
         'test/a.txt',
@@ -74,7 +74,7 @@ async def test_watch_one_dir(bootstrap: WaterBootstrap, tempfiles: Tempfiles):
     await p.stop()
 
 
-async def test_chdir_guess_insert_interpreter(bootstrap: WaterBootstrap, sampledir: str):
+async def test_chdir_guess_insert_interpreter(bootstrap: Bootstrap, sampledir: str):
     """
     Test guessing when to insert the python interpreter in the path when the
     `--chdir` option is used.
@@ -89,7 +89,7 @@ async def test_chdir_guess_insert_interpreter(bootstrap: WaterBootstrap, sampled
     assert d['argv'] == ['script1.py']
 
 
-async def test_guess_insert_interpreter(bootstrap: WaterBootstrap, sampledir: str):
+async def test_guess_insert_interpreter(bootstrap: Bootstrap, sampledir: str):
     """
     Test guessing when to insert the python interpreter in the path.
     """
@@ -104,7 +104,7 @@ async def test_guess_insert_interpreter(bootstrap: WaterBootstrap, sampledir: st
     assert d['argv'] == [script]
 
 
-async def test_guess_script_is_executable(bootstrap: WaterBootstrap, sampledir: str):
+async def test_guess_script_is_executable(bootstrap: Bootstrap, sampledir: str):
     """
     Check that the interpreter is not inserted if the python script is
     executable.
@@ -120,7 +120,7 @@ async def test_guess_script_is_executable(bootstrap: WaterBootstrap, sampledir: 
     assert d['argv'] == [script]
 
 
-async def test_guess_insert_module(bootstrap: WaterBootstrap, sampledir: str):
+async def test_guess_insert_module(bootstrap: Bootstrap, sampledir: str):
     """
     Check that `python -m` is inserted into the command when a python module is detected.
     """
@@ -138,7 +138,7 @@ async def test_guess_insert_module(bootstrap: WaterBootstrap, sampledir: str):
     assert d['argv'] == [op.join(sampledir, 'module1/__main__.py')]
 
 
-async def test_no_guess(bootstrap: WaterBootstrap, sampledir: str):
+async def test_no_guess(bootstrap: Bootstrap, sampledir: str):
     """
     Check that command guessing is turned off then `-n, --no-guess` is used.
     """
@@ -161,7 +161,7 @@ async def test_no_guess(bootstrap: WaterBootstrap, sampledir: str):
 
 # This test hangs for 30 seconds, sleep doesn't get killed for some reason
 @pytest.mark.skip(reason='BUG - monitor:stop works from command-line but not from py.test')
-async def test_exit_when_task_hung(bootstrap: WaterBootstrap, sampledir: str):
+async def test_exit_when_task_hung(bootstrap: Bootstrap, sampledir: str):
     """
     Test guessing when to insert the python interpreter in the path when the
     `--chdir` option is used.
@@ -173,7 +173,7 @@ async def test_exit_when_task_hung(bootstrap: WaterBootstrap, sampledir: str):
     await asyncio.sleep(1)
 
 
-async def test_parallel_commands(bootstrap: WaterBootstrap):
+async def test_parallel_commands(bootstrap: Bootstrap):
     p = await bootstrap.spawn('-P -x "echo ok" -- "echo ok"')
     await p.expect('starting.*')
     await p.expect('starting.*')
