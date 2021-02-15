@@ -25,6 +25,7 @@ ansicolors>=1.1.8
 click>=7.1.2
 watchdog>=1.0.2
 toml>=0.10.2
+pydantic>=1.7.3
 """
 
 setup(
@@ -83,7 +84,7 @@ setup(
   entry_points={'console_scripts': [
     'foremon = foremon.__main__:main',
   ]},
-  python_requires='>=3.6',
+  python_requires='>=3.6.1',
   # Due to README.md, requirements.txt, etc...
   zip_safe=False
 )
