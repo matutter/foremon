@@ -11,7 +11,8 @@ from watchdog.observers import Observer
 
 from .atexit_handler import *
 from .display import *
-from .queue import queueiter
+from .queue import *
+from .task import *
 
 
 def want_list(l: Any, default: List[str], unique: bool = True) -> List[str]:
@@ -77,7 +78,7 @@ class Monitor:
         display_debug('paths', paths)
         display_debug('patterns', patterns)
         display_debug('ignore', ignore)
-        display_debug('ignore_dirs', ignore)
+        display_debug('ignore_dirs', ignore_dirs)
         display_debug('case_sensitive', case_sensitive)
 
         handler = PatternMatchingEventHandler(
@@ -278,7 +279,7 @@ class Monitor:
         line = self.pipe.readline().lower()
 
         if startswith(line, restart):
-            self.signal_process(signal.SIGKILL)
+            self.signal_process(signal.SIGTERM)
             self.start_all_tasks()
             return
 

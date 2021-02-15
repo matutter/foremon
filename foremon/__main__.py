@@ -13,9 +13,6 @@ from . import __version__
 from .display import *
 from .monitor import Monitor
 
-set_display_name('foremon')
-
-
 def want_string(ctx, param, value: Tuple[str]):
     return ' '.join(list(value))
 
@@ -140,7 +137,7 @@ def foremon(ext: List[str], watch: List[str], ignore: List[str],
         args = guess_args(args)
 
     if not unsafe:
-        ignore.extend(['.git/*', '__pycache__/*', '.*'])
+        ignore.extend(['.git/*', '__pycache__/*', '.*', '*/.pytest_cache/*'])
 
     m = Monitor(parallel=parallel)
 
@@ -162,6 +159,7 @@ def foremon(ext: List[str], watch: List[str], ignore: List[str],
 
 
 def main():
+    set_display_name('foremon')
     return foremon.main(prog_name=get_display_name())
 
 
