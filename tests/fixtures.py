@@ -1,7 +1,4 @@
-from foremon.display import *
-from foremon.atexit_handler import *
 import asyncio
-from asyncio.tasks import ALL_COMPLETED, FIRST_COMPLETED, Task
 import errno
 import os
 import os.path as op
@@ -11,10 +8,15 @@ import sys
 import time
 from asyncio import create_subprocess_shell
 from asyncio.subprocess import PIPE, Process
+from asyncio.tasks import ALL_COMPLETED, FIRST_COMPLETED, Task
+from glob import glob
 from secrets import token_hex
-from typing import Coroutine, List, Optional, Set, Tuple, Pattern
+from typing import Coroutine, List, Optional, Pattern, Set, Tuple
+
 import pytest
 from _pytest.fixtures import SubRequest
+from foremon.atexit_handler import *
+from foremon.display import *
 
 from .fixtures import *
 
@@ -40,6 +42,18 @@ def get_version_file():
 
 def get_input_dir():
     return op.join(get_project_root(), 'tests/input')
+
+
+def get_input_file(name: str) -> str:
+    return op.join(get_input_dir(), name)
+
+
+def get_sample_file(name: str) -> str:
+    return op.join(get_project_root(), 'tests/samples', name)
+
+
+def get_sample_files(pattern: str) -> List[str]:
+    return glob(op.join(get_project_root(), 'tests/samples', pattern))
 
 
 class Bootstrap:
@@ -74,7 +88,8 @@ class Bootstrap:
     async def _write_stdin(self, s: str, eof: bool = False):
         if not self.p:
             return
-        if s: print(s)
+        if s:
+            print(s)
         data = (s+"\n").encode()
         self.p.stdin.write(data)
         await self.p.stdin.drain()
@@ -91,7 +106,8 @@ class Bootstrap:
                 self.stdout += line
                 self._stdout_awaiter = None
                 line = line.rstrip()
-                if line: print(line)
+                if line:
+                    print(line)
                 self._stdout_awaiter = None
                 return line
             self._stdout_awaiter = asyncio.ensure_future(read())
@@ -107,7 +123,8 @@ class Bootstrap:
                 self.stderr += line
                 self._stderr_awaiter = None
                 line = line.rstrip()
-                if line: print(line)
+                if line:
+                    print(line)
                 self._stderr_awaiter = None
                 return line
             self._stderr_awaiter = asyncio.ensure_future(read())
@@ -205,7 +222,8 @@ class Bootstrap:
 
         if self.coverage:
             # append coverage to .coverage every time this executes
-            executable = [sys.executable, '-m', 'coverage', 'run', '-a', '--include="foremon/*"']
+            executable = [sys.executable, '-m', 'coverage',
+                          'run', '-a', '--include="foremon/*"']
         else:
             executable = [sys.executable]
 
@@ -304,6 +322,7 @@ def tempfiles(request: SubRequest) -> Tempfiles:
 def sampledir():
     return op.join(op.dirname(__file__), 'samples')
 
+
 @pytest.fixture(scope='session', autouse=True)
 def cleanup_old_coverage(request: SubRequest):
     if request.config.getoption('--coverage'):
@@ -313,18 +332,22 @@ def cleanup_old_coverage(request: SubRequest):
         except:
             pass
 
+
 __all__ = [
-    'tempfiles',
-    'Tempfiles',
+    'bootstrap',
     'Bootstrap',
-    'mkdirp',
-    'get_project_root',
     'get_code_dir',
-    'get_version_file',
     'get_input_dir',
-    'pytestmark',
+    'get_input_file',
+    'get_project_root',
+    'get_sample_file',
+    'get_sample_files',
+    'get_version_file',
+    'mkdirp',
     'pytest',
+    'pytestmark',
     'sampledir',
     'SubRequest',
-    'bootstrap'
+    'tempfiles',
+    'Tempfiles',
 ]
