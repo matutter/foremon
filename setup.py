@@ -82,7 +82,7 @@ setup(
     'build_ext': build_ext,
   },
   entry_points={'console_scripts': [
-    'foremon = foremon.__main__:main',
+    'foremon = foremon.cli:main',
   ]},
   python_requires='>=3.6.1',
   # Due to README.md, requirements.txt, etc...
