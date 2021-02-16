@@ -16,8 +16,6 @@ DEFAULT_EVENTS = [
     'modified', 'deleted'
 ]
 
-#ForemonConfig = ForwardRef('ForemonConfig')
-
 class Events(str, Enum):
     created = 'created'
     modified = 'modified'
@@ -49,6 +47,7 @@ class ForemonConfig(BaseSettings):
     recursive:       bool = Field(True)
     events:          List[Events] = Field(default_factory=DEFAULT_EVENTS.copy)
 
+    skip:            bool = Field(False)
     configs:         List['ForemonConfig'] = Field(default_factory=list)
 
     @validator('term_signal', pre=True)

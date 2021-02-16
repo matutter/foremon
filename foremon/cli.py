@@ -1,4 +1,5 @@
 import asyncio
+from foremon import config
 from foremon.errors import ForemonError
 from foremon.task import ForemonTask
 from foremon.config import ForemonConfig, PyProjectConfig
@@ -85,6 +86,38 @@ class Util:
     """
     A class of hookable static methods.
     """
+    @staticmethod
+    def get_active_tasks(root: ForemonConfig, aliases: List[str], use_all: bool = False) -> List[ForemonTask]:
+
+        configs = [root]
+        active = list()
+
+        while configs:
+            task = ForemonTask(configs.pop(0))
+
+            configs.extend(task.config.configs)
+
+            if len(task.config.scripts) == 0:
+                display_debug("task", task.name, "was skipped because scripts is empty")
+                continue
+
+            if task.name in aliases:
+                active.append(task)
+                # Override skip if `-a` is used explicitly
+                task.config.skip = False
+                continue
+
+            if use_all and not task.config.skip:
+                active.append(task)
+                continue
+
+            if task.config.skip:
+                display_debug('task', task.name, 'is skipped')
+
+            task.config.skip = True
+
+        return list(active)
+
 
     @staticmethod
     def load_config(path: str) -> Optional[ForemonConfig]:
@@ -148,14 +181,10 @@ class Util:
             pass
 
     @staticmethod
-    def add_tasks(m: Monitor, conf: ForemonConfig, verbose: bool = False) -> None:
-        task = ForemonTask(conf)
-        if verbose:
-            task.add_before_callback(Util.before_run)
-        m.add_task(task)
-        display_debug("task", task.name, "ready for monitor")
-        for sub in conf.configs:
-            Util.add_tasks(m, sub, verbose)
+    def add_tasks(m: Monitor, tasks: List[ForemonConfig]) -> None:
+        for task in tasks:
+            m.add_task(task)
+            display_debug("task", task.name, "ready for monitor")
 
     @staticmethod
     def start_monitor(m: Monitor, dry_run: bool = False):
@@ -201,10 +230,16 @@ class Util:
               help='Do not try to run commands as a script or module.')
 @click.option('-C', '--chdir',
               help='Change to this directory before starting.')
+@click.option('-A', '--all', 'use_all',
+              is_flag=True, default=False, show_default=True,
+              help='Run all scripts in the config unless skipped.')
+@click.option('-a', '--alias', 'aliases',
+              multiple=True, default=['default'],
+              help='Run the alias from the config.')
 @click.option('--dry-run', is_flag=True, hidden=True)
 @click.argument('args', callback=want_string, nargs=-1)
-def foremon(ext: List[str], watch: List[str], ignore: List[str],
-            verbose: bool, unsafe: bool, no_guess: bool,
+def foremon(ext: List[str], watch: List[str], ignore: List[str], aliases: List[str],
+            verbose: bool, unsafe: bool, no_guess: bool, use_all: bool,
             exec: List[str], args: str,
             config_file: str = None, chdir: Optional[str] = None, dry_run: bool = False):
 
@@ -220,12 +255,15 @@ def foremon(ext: List[str], watch: List[str], ignore: List[str],
         conf = Util.load_config(config_file)
 
     if conf is None:
-        conf = ForemonConfig(scripts=scripts)
-    elif scripts:
+        conf = ForemonConfig()
+
+    if scripts:
         conf.scripts.extend(scripts)
 
-    if not conf.scripts:
-        display_warning("No script or executable specified, nothing to do ...")
+    tasks: List[ForemonTask] = Util.get_active_tasks(conf, aliases, use_all=use_all)
+
+    if not tasks:
+        display_warning("no scripts or executable specified, nothing to do ...")
         exit(2)
 
     if unsafe:
@@ -243,12 +281,15 @@ def foremon(ext: List[str], watch: List[str], ignore: List[str],
     if ext:
         conf.patterns = ext.copy()
 
+    if verbose:
+        for t in tasks:
+            t.add_before_callback(Util.before_run)
+
     try:
         m = Monitor(pipe=Util.get_input())
 
-        Util.add_tasks(m, conf, verbose=verbose)
+        Util.add_tasks(m, tasks)
 
-        print(Util.start_monitor)
         Util.start_monitor(m, dry_run=dry_run)
     except ForemonError as e:
         display_error(f'error {e.code}: {e.message}')

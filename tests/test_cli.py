@@ -51,7 +51,7 @@ def test_cli_config_file(cli, output: CapLines, tempfiles: Tempfiles):
             scripts = ["echo ok"]
         """)
 
-    result: Result = cli('-V --dry-run -f ', conf)
+    result: Result = cli('-V --dry-run --all -f', conf)
     assert output.stderr_expect(f'loaded.*config from {conf}')
     assert output.stderr_expect('task default ready.*')
     assert output.stderr_expect('task test1 ready.*')
@@ -207,3 +207,48 @@ async def test_interactive_restart_long_running(output: CapLines, tempfiles: Tem
     assert output.stderr_expect('starting.*')
     assert output.stderr_expect('terminated.*')
     assert output.stderr_expect('starting.*')
+
+def test_cli_skip_tasks(output: CapLines):
+    from foremon.cli import Util
+
+    conf = PyProjectConfig.parse_toml("""
+    [tool.foremon]
+    scripts = ["true"]
+
+        [tool.foremon.other1]
+
+        [tool.foremon.other2]
+        scripts = ["true"]
+        skip = true
+    """).tool.foremon
+
+    m: Monitor = Monitor()
+
+    tasks = Util.get_active_tasks(conf, [], use_all=True)
+    Util.add_tasks(m, tasks)
+    assert len(m.all_tasks) == 1
+
+    assert output.stderr_expect('task other1.*skipped.*scripts.*empty')
+    assert output.stderr_expect('task other2.*skipped')
+    assert output.stderr_expect('task default ready.*')
+
+
+def test_cli_skip_tasks2(cli, output: CapLines, tempfiles: Tempfiles):
+    conf = tempfiles.make_file("config")
+
+    with open(conf, 'w') as fd:
+        fd.write("""
+        [tool.foremon]
+        scripts = ["true"]
+
+            [tool.foremon.other1]
+
+            [tool.foremon.other2]
+            scripts = ["true"]
+            skip = true
+        """)
+
+    result: Result = cli('-V --dry-run -f', conf)
+    assert output.stderr_expect('task other1.*skipped.*scripts.*empty')
+    assert output.stderr_expect('task other2.*skipped')
+    assert output.stderr_expect('task default ready.*')
