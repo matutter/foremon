@@ -14,7 +14,7 @@ def read(file, pattern = None):
     return text
 
 # Extract the __version__ value from __init__.py
-version = read('water/__init__.py', r'__version__ = "([^"]+)"')
+version = read('foremon/__init__.py', r'__version__ = "([^"]+)"')
 
 # Use the entire README
 long_description = read('README.md')
@@ -24,18 +24,20 @@ install_requires = """
 ansicolors>=1.1.8
 click>=7.1.2
 watchdog>=1.0.2
+toml>=0.10.2
+pydantic>=1.7.3
 """
 
 setup(
-  name="pywater",
+  name="foremon",
   version=version,
-  description="water - watch execute repeat",
+  description="Automatically restart applications when file changes are detected.",
   long_description=long_description,
   long_description_content_type='text/markdown',
   author="Mathew Utter",
   author_email="mcutter.svc@gmail.com",
   license="MIT",
-  url="http://github.com/matutter/water",
+  url="http://github.com/matutter/foremon",
   keywords=' '.join([
     'python',
     'filesystem',
@@ -73,16 +75,16 @@ setup(
     'Topic :: System :: Monitoring',
     'Topic :: Utilities',
   ],
-  packages=find_packages(include=['water']),
+  packages=find_packages(include=['foremon']),
   install_requires=install_requires,
   requires=re.findall(r'^\w+', install_requires, re.MULTILINE),
   cmdclass={
     'build_ext': build_ext,
   },
   entry_points={'console_scripts': [
-    'water = water.__main__:main',
+    'foremon = foremon.__main__:main',
   ]},
-  python_requires='>=3.6',
+  python_requires='>=3.6.1',
   # Due to README.md, requirements.txt, etc...
   zip_safe=False
 )

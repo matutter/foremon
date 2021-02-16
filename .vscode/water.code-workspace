@@ -3,5 +3,9 @@
 		{
 			"path": ".."
 		}
-	]
+	],
+	"settings": {
+		"editor.trimAutoWhitespace": true,
+		"editor.tabSize": 4
+	}
 }

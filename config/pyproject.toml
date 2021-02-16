@@ -1,0 +1,18 @@
+# For building this project
+[build-system]
+requires = [ "setuptools>=42", "wheel" ]
+build-backend = "setuptools.build_meta"
+
+# For developing this project
+[tool.foremon]
+patterns = ["*.py"]
+paths = ["tests/*", "foremon/*"]
+ignore = ["dist/*", "build/*"]
+scripts = ["py.test"]
+
+  [tool.foremon.build]
+  patterns = ["*/setup.py"]
+  paths = ['./setup.py']
+  scripts = ["python -m build"]
+
+
