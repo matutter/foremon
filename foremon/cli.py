@@ -1,5 +1,4 @@
 import asyncio
-from foremon import config
 from foremon.errors import ForemonError
 from foremon.task import ForemonTask
 from foremon.config import ForemonConfig, PyProjectConfig
@@ -192,6 +191,11 @@ class Util:
             display_success('dry run complete')
         else:
             Util.run_until_complete(m.start_interactive())
+            try:
+                # Ensure there are no dangling tasks before we leave
+                m.terminate_tasks()
+            except:
+                pass
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
