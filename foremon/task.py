@@ -188,7 +188,8 @@ class ForemonTask:
         return
 
     def _check_loop(self):
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
+        if loop is None: return
         if loop != self.loop:
             raise RuntimeError(
                 f'Trying to run {self.name} tasks on wrong loop')
