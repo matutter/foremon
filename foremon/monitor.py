@@ -1,10 +1,5 @@
 import asyncio
-from asyncio import futures
 import errno
-from foremon.errors import ForemonError
-
-from foremon.config import ForemonConfig
-import sys
 import os.path as op
 from asyncio import BaseEventLoop, Queue
 from functools import partial
@@ -13,10 +8,14 @@ from typing import Any, List, Optional, Set, TextIO
 from watchdog.events import FileSystemEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
 
+from foremon.config import ForemonConfig
+from foremon.errors import ForemonError
+
+from .config import *
 from .display import *
 from .queue import *
 from .task import *
-from .config import *
+
 
 class Monitor:
 
@@ -49,7 +48,8 @@ class Monitor:
     def add_task(self, task: ForemonTask) -> 'Monitor':
 
         if task in self.all_tasks:
-            raise ForemonError(f'cannot add duplicate task {task.name}', errno.EINVAL)
+            raise ForemonError(
+                f'cannot add duplicate task {task.name}', errno.EINVAL)
 
         conf: ForemonConfig = task.config
 
@@ -61,7 +61,7 @@ class Monitor:
             display_debug('ignore', conf.ignore)
             display_debug('ignore_dirs', conf.ignore_dirs)
             display_debug('ignore_case', conf.ignore_case)
-            display_debug('events', list(map(lambda e:e.name, conf.events)))
+            display_debug('events', list(map(lambda e: e.name, conf.events)))
 
         for path in list(conf.paths):
             if not op.exists(path):
@@ -69,15 +69,16 @@ class Monitor:
                 conf.paths.remove(path)
 
         if not conf.paths:
-            raise ForemonError('no valid paths specified, cannot add watch task', errno.ENOENT)
+            raise ForemonError(
+                'no valid paths specified, cannot add watch task', errno.ENOENT)
 
         callback = partial(self.queue_task_event, task)
 
         handler = PatternMatchingEventHandler(
-            patterns = conf.patterns,
-            ignore_patterns = conf.ignore_defaults + conf.ignore,
-            ignore_directories = conf.ignore_dirs,
-            case_sensitive = not conf.ignore_case)
+            patterns=conf.patterns,
+            ignore_patterns=conf.ignore_defaults + conf.ignore,
+            ignore_directories=conf.ignore_dirs,
+            case_sensitive=not conf.ignore_case)
 
         if Events.created in conf.events:
             handler.on_created = callback
