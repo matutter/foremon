@@ -12,7 +12,7 @@ on:
 jobs:
 
   env-check:
-    if: github.repository == 'matutter/water'
+    if: github.repository == 'matutter/foremon'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: pypi
@@ -137,7 +137,7 @@ jobs:
         pytest --cov=foremon
 
   deploy:
-    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'matutter/water'
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'matutter/foremon'
     needs: [build, test, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 15
