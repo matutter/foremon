@@ -8,8 +8,8 @@ the NodeJS ecosystem, but provide those features within a python toolchain. To
 use `foremon` run your script or module as `foremon [script or module]` or run
 `foremon --help` for advanced usage.
 
-File monitoring for foremon is provided by [watchdog][watchdog] which provides
-its own shell-utility, [watchmedo][watchmedo].
+File monitoring is provided by [watchdog][watchdog] which provides its own
+shell-utility, [watchmedo][watchmedo].
 
 foremon is currently in beta.
 
@@ -36,6 +36,13 @@ pass to it:
 foremon [script or module] [args]
 ```
 
+If your application uses options which conflict with foremon's options use the
+`--` argument separator.
+
+```bash
+foremon -- mymodules --version
+```
+
 For CLI options, use `-h` or `--help`:
 
 ```bash
@@ -48,13 +55,14 @@ feature, add the `-n` (`--no-guess`) option.
 
 ```bash
 # Executes `script.py`
-foremon -n script.py
+foremon -n -- script.py
 
 # Executes `python3 script.py`
-foremon script.py
+foremon -- script.py
 
-# Does not try to guess command
-foremon node server.js
+# Does not try to guess command. `test` is ambiguous because it is a
+# shell-builtin and python module.
+foremon -- test -f script.py
 ```
 
 foremon runs python scripts with the python interpreter of the environment it is
@@ -73,12 +81,15 @@ When file changes are detected foremon will restart the script. If scripts are
 still running when the change is detected, foremon will signal the current
 process with `SIGTERM` before restarting.
 
+The signal used may be set in by `term_signal` in the config file.
+
 # Manual restart
 
 Scripts may be manually restarted while foremon is running by typing `rs` and
 then `enter` in the terminal where foremon is running.
 
 foremon can also be shutdown gracefully by typing `exit` followed by `enter`.
+Just using `ctrl+c` will will also stop any scripts if running.
 
 # pyproject.toml
 
@@ -89,34 +100,67 @@ _pyproject.toml_ file foremon will automatically load defaults from the
 `[tool.foremon]` section. An alternative config file may be specified with the
 `-f` (`--config-file`) option.
 
+All configuration settings are optional but foremon wont run if are no `scripts`
+to run.
+
 ```ini
 [tool.foremon]
 # Only watch files ending in .py
-ext = ["*.py"]
-# Only watch files in these paths
-paths = ["tests/*", "foremon/*"]
-# Ignore everything under these paths
-ignore = ["tests/input/*"]
+patterns = ["*.py"]
 # Run these scripts in-order on-change
-scripts = [
-  "pytest --coverage",
-  "coverage"
-  ]
+scripts = ["pytest --cov=myproj"]
+# Only run if explicitly run with `-a [alias]
+skip = true
+# Run script like they're in this directory
+cwd = "./"
+# Key-Value paris of environment variables
+environment = { TERM = "MONO" }
+# Exit code to expect for a successful exit
+returncode = 0
+# Signal to send if the process should be terminated
+term_signal = "SIGTERM"
+# Set to false to turn on case-sensitive pattern matching
+ignore_case = true
+# List of default ignored paths like .git, or .tox
+ignore_defaults = []
+# Ignore changes to directories
+ignore_dirs = true
+# A list of patterns to ignore
+ignore = ["*/build/*"]
+# Paths to watch for changes
+paths = ["src/"]
+# Watch paths recursively
+recursive = true
+# List of events - created, deleted, moved, modified
+events = ["created", "modified"]
 ```
 
-foremon supports script aliasing in the config file. Sections with names
-matching `[tool.foremon.*]`, where `*` is replaced with your alias`, can be ran
-instead of the default script.
+All subsections contain the same options.
+
+foremon supports multiple sets of files to watch and scripts to run. Sections in
+the config file matching `[tool.foremon.*]`, where `*` is the alias for the
+task, may be defined in addition to the default section.
+
+To run these other sections specify the `-a [alias]` option. The `-a` option may
+be used multiple times or the `--all` option can be used to turn on all tasks.
+
 
 ```ini
 [tool.foremon]
+patterns = ["*.c", "*.h"]
+scripts = ["./configure"]
+
+  # Run me with 'foremon -a make'
   [tool.foremon.make]
-  ext = ["*.c", "*.h", "make*"]
+  patterns = ["make*"]
   paths = ["src/*"]
   scripts = ["make -C src"]
+  events = ["created"]
+
+  [tool.foremon.other]
+  scripts = ["echo skipped"]
+  skip = true
 ```
 
-This alias may be run with `foremon run make`.
-
-Any command-line arguments passed to foremon supersede definitions in config
-files.
+Any command-line arguments passed to foremon only supersede definitions in
+default section.
