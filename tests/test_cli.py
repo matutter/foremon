@@ -1,182 +1,209 @@
-import asyncio
-import json
-import os
+import errno
+from foremon.display import set_display_verbose
 import os.path as op
-import shutil
-import signal
 import sys
-from foremon.display import display_debug
+from unittest.mock import MagicMock
+from foremon import monitor
+from foremon.task import ForemonTask
+from foremon.config import PyProjectConfig
+from foremon.monitor import Monitor
+from pytest_mock.plugin import MockerFixture
 
+from .cli_fixtures import *
 from .fixtures import *
 
-CLEAN_EXIT = r'clean exit.*'
-ANY_EXIT   = r'(app crashed|clean exit).*'
 
-async def test_help(bootstrap: Bootstrap):
-    p = await bootstrap.spawn('--help')
-    await p.stop()
-    assert '--help' in p.stdout
-    assert p.returncode == 0
+def test_help(cli: CliProg, output: CapLines):
+    assert cli('--help').exit_code == 0
+    assert output.stdout_expect('Usage: foremon.*')
 
 
-async def test_version(bootstrap: Bootstrap):
-    p = await bootstrap.spawn('--version')
-    await p.stop()
+def test_version(cli, output: CapLines):
     from foremon import __version__
-    assert p.stdout.strip() == __version__
+    result: Result = cli('--version')
+    assert result.exit_code == 0
+    assert output.stdout_expect(__version__)
 
 
-async def test_watch_one_file(bootstrap: Bootstrap, tempfiles: Tempfiles):
-
-    f1, = tempfiles.make_files([
-        'test/a.txt',
-    ])
-
-    p = await bootstrap.spawn('-n -w', f1, '-e "*"', '-V', '-- test -f', f1)
-    assert await p.expect(r'starting.*')
-    assert await p.expect(r'clean exit.*')
-    with open(f1, 'w') as fd:
-        fd.write('modify')
-    assert await p.expect(r'trigger.*modified')
-    assert await p.expect(r'clean exit.*')
-    await p.stop()
+def test_paths_do_not_exist(cli, output: CapLines):
+    from foremon import __version__
+    result: Result = cli('-w this/does/not/exist -- true')
+    assert result.exit_code == errno.ENOENT
 
 
-async def test_watch_one_dir(bootstrap: Bootstrap, tempfiles: Tempfiles):
-
-    f1, f2, f3 = tempfiles.make_files([
-        'test/a.txt',
-        'test/b.txt',
-        'test/c.txt'
-    ])
-
-    p = await bootstrap.spawn('-n -w', tempfiles.root, '-e "*"', '-V', '-- test -f', f3)
-    assert await p.expect(r'starting.*')
-    assert await p.expect(r'clean exit.*')
-
-    display_debug('modifying a file')
-    with open(f1, 'w') as fd:
-        fd.write('modify')
-
-    assert await p.expect(r'trigger.*modified')
-    assert await p.expect(r'clean exit.*')
-
-    display_debug('deleting a file')
-    os.unlink(f3)
-    assert await p.expect(r'trigger.*deleted')
-    assert await p.expect(r'app crashed.*')
-
-    display_debug('moving a file')
-    shutil.move(f1, f2)
-    assert await p.expect(r'trigger.*moved')
-    assert await p.expect(r'(app crashed|clean exit).*')
-
-    await p.stop()
+def test_cli_dry_run(cli, output: CapLines):
+    result: Result = cli('-V --dry-run -- true')
+    assert output.stderr_expect('dry run complete')
 
 
-async def test_chdir_guess_insert_interpreter(bootstrap: Bootstrap, sampledir: str):
-    """
-    Test guessing when to insert the python interpreter in the path when the
-    `--chdir` option is used.
-    """
+def test_cli_config_file(cli, output: CapLines, tempfiles: Tempfiles):
+    conf = tempfiles.make_file("config")
 
-    p = await bootstrap.spawn('-V', '-C', sampledir, 'script1.py')
-    await p.stop()
+    with open(conf, 'w') as fd:
+        fd.write("""
+        [tools.foremon]
+        scripts = ["echo ok"]
 
-    d = json.loads(p.stdout)
+            [tools.foremon.test1]
+            scripts = ["echo ok"]
 
-    assert d['executable'] == sys.executable
-    assert d['argv'] == ['script1.py']
+            [tools.foremon.test2]
+            scripts = ["echo ok"]
+        """)
 
-
-async def test_guess_insert_interpreter(bootstrap: Bootstrap, sampledir: str):
-    """
-    Test guessing when to insert the python interpreter in the path.
-    """
-
-    script = op.join(sampledir, 'script1.py')
-    p = await bootstrap.spawn('-V', script)
-    await p.stop()
-
-    d = json.loads(p.stdout)
-
-    assert d['executable'] == sys.executable
-    assert d['argv'] == [script]
+    result: Result = cli('-V --dry-run -f ', conf)
+    assert output.stderr_expect(f'loaded.*config from {conf}')
+    assert output.stderr_expect('task default ready.*')
+    assert output.stderr_expect('task test1 ready.*')
+    assert output.stderr_expect('task test2 ready.*')
 
 
-async def test_guess_script_is_executable(bootstrap: Bootstrap, sampledir: str):
-    """
-    Check that the interpreter is not inserted if the python script is
-    executable.
-    """
+def test_cli_chdir(mocker, cli):
+    mock: MagicMock = mocker.MagicMock(name='start_monitor')
+    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
 
-    script = op.join(sampledir, 'script2.py')
+    result: Result = cli('-V --dry-run --chdir /tmp -- true')
 
-    p = await bootstrap.spawn(script)
-    await p.stop()
-
-    d = json.loads(p.stdout)
-    assert d['executable'] == ""
-    assert d['argv'] == [script]
+    m: Monitor = mock.call_args[0][0]
+    t: ForemonTask = m.all_tasks.pop()
+    assert t
+    assert t.config.cwd == '/tmp'
 
 
-async def test_guess_insert_module(bootstrap: Bootstrap, sampledir: str):
-    """
-    Check that `python -m` is inserted into the command when a python module is detected.
-    """
+def test_cli_unsafe(mocker, cli):
+    mock: MagicMock = mocker.MagicMock(name='start_monitor')
+    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
 
-    p = await bootstrap.spawn('-V', '-C', sampledir, 'module1')
+    result: Result = cli('-V --dry-run --unsafe -- true')
 
-    python = op.basename(sys.executable)
-    assert await p.expect(f'starting.*{python} -m module1')
-    assert await p.expect(r'clean exit.*')
-    await p.stop()
-
-    d = json.loads(p.stdout)
-
-    assert d['executable'] == sys.executable
-    assert d['argv'] == [op.join(sampledir, 'module1/__main__.py')]
+    m: Monitor = mock.call_args[0][0]
+    t: ForemonTask = m.all_tasks.pop()
+    assert t
+    assert t.config.ignore_defaults == []
 
 
-async def test_no_guess(bootstrap: Bootstrap, sampledir: str):
-    """
-    Check that command guessing is turned off then `-n, --no-guess` is used.
-    """
+def test_cli_ignore(mocker, cli):
+    mock: MagicMock = mocker.MagicMock(name='start_monitor')
+    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
 
-    # Module is ambiguous with `echo` command so the module will run
-    p = await bootstrap.spawn('-V', '-C', sampledir, 'echo')
-    assert await p.expect(f'starting.*-m echo')
-    assert await p.expect(r'clean exit.*')
-    await p.stop()
+    result: Result = cli('-V --dry-run -i "*.test1" -i "*.test2" -- true')
 
-    # If this does not throw then it is our module
-    d = json.loads(p.stdout)
-    assert d
-
-    # Using -n disables guessing
-    p = await bootstrap.spawn('-Vn', '-C', sampledir, 'echo Hello World!')
-    await p.stop()
-    assert p.stdout == 'Hello World!\n'
+    m: Monitor = mock.call_args[0][0]
+    t: ForemonTask = m.all_tasks.pop()
+    assert t
+    assert "*.test1" in t.config.ignore
+    assert "*.test2" in t.config.ignore
 
 
-# This test hangs for 30 seconds, sleep doesn't get killed for some reason
-@pytest.mark.skip(reason='BUG - monitor:stop works from command-line but not from py.test')
-async def test_exit_when_task_hung(bootstrap: Bootstrap, sampledir: str):
-    """
-    Test guessing when to insert the python interpreter in the path when the
-    `--chdir` option is used.
-    """
+def test_cli_scripts(mocker, cli):
+    mock: MagicMock = mocker.MagicMock(name='start_monitor')
+    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
 
-    p = await bootstrap.spawn('sleep 30')
-    await asyncio.sleep(1)
-    await p.stop()
-    await asyncio.sleep(1)
+    result: Result = cli('-V --dry-run -x "echo 1" -x "echo 2" -- echo 3')
+
+    m: Monitor = mock.call_args[0][0]
+    t: ForemonTask = m.all_tasks.pop()
+    assert t
+    assert "echo 1" in t.config.scripts
+    assert "echo 2" in t.config.scripts
+    assert "echo 3" in t.config.scripts
+
+def test_cli_guess_script(mocker, cli):
+    mock: MagicMock = mocker.MagicMock(name='start_monitor')
+    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
+
+    script = get_sample_file('script1.py')
+    result: Result = cli(script)
+
+    m: Monitor = mock.call_args[0][0]
+    t: ForemonTask = m.all_tasks.pop()
+    assert t
+    guess = t.config.scripts[0]
+    assert op.basename(sys.executable) in guess
+
+def test_cli_guess_module(mocker, cli):
+    mock: MagicMock = mocker.MagicMock(name='start_monitor')
+    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
+
+    script = get_sample_file('module1')
+    result: Result = cli(script)
+
+    m: Monitor = mock.call_args[0][0]
+    t: ForemonTask = m.all_tasks.pop()
+    assert t
+    guess = t.config.scripts[0]
+    assert op.basename(sys.executable) + ' -m' in guess
+
+def monitor_from_toml(toml: str) -> Monitor:
+    conf = PyProjectConfig.parse_toml(toml).tools.foremon
+    task = ForemonTask(conf)
+    monitor = Monitor(pipe=None)
+    monitor.add_task(task)
+    return monitor
 
 
-async def test_parallel_commands(bootstrap: Bootstrap):
-    p = await bootstrap.spawn('-P -x "echo ok" -- "echo ok"')
-    await p.expect('starting.*')
-    await p.expect('starting.*')
-    await p.stop()
-    assert p.stdout == 'ok\nok\n'
+async def test_interactive_exit(output: CapLines, tempfiles: Tempfiles):
 
+    trigger = tempfiles.make_file('trigger')
+
+    monitor = monitor_from_toml(f"""
+        [tools.foremon]
+        paths = ["{trigger}"]
+        scripts = ["echo please exit"]
+        """)
+
+    def do_exit():
+        monitor.handle_input('exit')
+
+    monitor.loop.call_later(1.0, do_exit)
+    await monitor.start_interactive()
+    assert output.stderr_expect('starting.*')
+    assert output.stderr_expect('clean exit.*')
+    assert output.stderr_expect('stopping.*')
+
+async def test_interactive_restart(output: CapLines, tempfiles: Tempfiles):
+
+    trigger = tempfiles.make_file('trigger')
+
+    monitor = monitor_from_toml(f"""
+        [tools.foremon]
+        paths = ["{trigger}"]
+        scripts = ["echo ok"]
+        """)
+
+    def do_exit():
+        monitor.handle_input('exit')
+
+    def do_restart():
+        monitor.handle_input('rs')
+        monitor.loop.call_later(1.0, do_exit)
+
+    monitor.loop.call_soon(do_restart)
+
+    await monitor.start_interactive()
+    assert output.stdout_expect('ok')
+    assert output.stdout_expect('ok')
+
+async def test_interactive_restart_long_running(output: CapLines, tempfiles: Tempfiles):
+
+    trigger = tempfiles.make_file('trigger')
+
+    monitor = monitor_from_toml(f"""
+        [tools.foremon]
+        paths = ["{trigger}"]
+        scripts = ["echo ok", "sleep 5", "echo done"]
+        """)
+
+    def do_exit():
+        monitor.handle_input('exit')
+
+    def do_restart():
+        monitor.handle_input('rs')
+        monitor.loop.call_later(1.0, do_exit)
+
+    monitor.loop.call_later(1.0, do_restart)
+
+    await monitor.start_interactive()
+    assert output.stderr_expect('starting.*')
+    assert output.stderr_expect('terminated.*')
+    assert output.stderr_expect('starting.*')

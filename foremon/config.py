@@ -1,5 +1,6 @@
 import os
 import signal
+from enum import Enum, auto
 from typing import Dict, ForwardRef, List, Optional
 
 import toml
@@ -11,8 +12,17 @@ DEFAULT_IGNORES = [
     '.tox/*', '.venv/*', '.pytest_cache/*'
 ]
 
+DEFAULT_EVENTS = [
+    'modified', 'deleted'
+]
+
 ForemonConfig = ForwardRef('ForemonConfig')
 
+class Events(str, Enum):
+    created = 'created'
+    modified = 'modified'
+    deleted = 'deleted'
+    moved = 'moved'
 
 class ForemonConfig(BaseSettings):
 
@@ -31,12 +41,13 @@ class ForemonConfig(BaseSettings):
     # Change monitoring
     ################################
     ignore_case:     bool = Field(True)
-    ignore_defaults: List[str] = Field(DEFAULT_IGNORES)
+    ignore_defaults: List[str] = Field(default_factory=DEFAULT_IGNORES.copy)
     ignore_dirs:     bool = Field(True)
     ignore:          List[str] = Field(default_factory=list)
-    paths:           List[str] = Field(['.'])
-    patterns:        List[str] = Field(['*'])
+    paths:           List[str] = Field(default_factory=['.'].copy)
+    patterns:        List[str] = Field(default_factory=['*'].copy)
     recursive:       bool = Field(True)
+    events:          List[Events] = Field(default_factory=DEFAULT_EVENTS.copy)
 
     configs:         List[ForemonConfig] = Field(default_factory=list)
 
@@ -97,4 +108,4 @@ class PyProjectConfig(BaseSettings):
         return project
 
 
-__all__ = ['PyProjectConfig', 'ToolsConfig', 'ForemonConfig']
+__all__ = ['PyProjectConfig', 'ToolsConfig', 'ForemonConfig', 'Events']
