@@ -17,6 +17,8 @@ from . import __version__
 from .display import *
 from .monitor import Monitor
 
+DEFAULT_CONFIG = op.join(os.getcwd(), "pyproject.toml")
+
 
 def want_string(ctx, param, value: Tuple[str]):
     return ' '.join(list(value))
@@ -83,6 +85,31 @@ class Util:
     """
     A class of hookable static methods.
     """
+
+    @staticmethod
+    def load_config(path: str) -> Optional[ForemonConfig]:
+
+        exists = op.exists(path)
+        if not exists:
+
+            if path != DEFAULT_CONFIG:
+                display_error(f'cannot find config file {path}')
+
+            return None
+
+        with open(path, 'r') as fd:
+            project = PyProjectConfig.parse_toml(fd.read())
+            conf = project.tool.foremon
+
+            if conf is None:
+                display_debug(
+                    'no [tool.foremon] section specified in', path)
+            else:
+                display_success(
+                    'loaded [tool.foremon] config from', path)
+                return conf
+        return None
+
     @staticmethod
     def print_version(ctx: Context, param, value):
         if not value or ctx.resilient_parsing:
@@ -143,7 +170,7 @@ class Util:
               expose_value=False, is_eager=True,
               help='Print version and exit.')
 @click.option('-f', '--config-file',
-              type=click.Path(exists=True),
+              default=DEFAULT_CONFIG, show_default=False,
               help='Path to file config.')
 @click.option('-e', '--ext',
               default='*', multiple=True,
@@ -190,16 +217,7 @@ def foremon(ext: List[str], watch: List[str], ignore: List[str],
 
     conf = None
     if config_file:
-        with open(config_file, 'r') as fd:
-            project = PyProjectConfig.parse_toml(fd.read())
-            conf = project.tools.foremon
-
-            if conf is None:
-                display_debug(
-                    'no [tools.foremon] section specified in', config_file)
-            else:
-                display_success(
-                    'loaded [tools.foremon] config from', config_file)
+        conf = Util.load_config(config_file)
 
     if conf is None:
         conf = ForemonConfig(scripts=scripts)

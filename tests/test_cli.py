@@ -41,13 +41,13 @@ def test_cli_config_file(cli, output: CapLines, tempfiles: Tempfiles):
 
     with open(conf, 'w') as fd:
         fd.write("""
-        [tools.foremon]
+        [tool.foremon]
         scripts = ["echo ok"]
 
-            [tools.foremon.test1]
+            [tool.foremon.test1]
             scripts = ["echo ok"]
 
-            [tools.foremon.test2]
+            [tool.foremon.test2]
             scripts = ["echo ok"]
         """)
 
@@ -135,7 +135,7 @@ def test_cli_guess_module(mocker, cli):
     assert op.basename(sys.executable) + ' -m' in guess
 
 def monitor_from_toml(toml: str) -> Monitor:
-    conf = PyProjectConfig.parse_toml(toml).tools.foremon
+    conf = PyProjectConfig.parse_toml(toml).tool.foremon
     task = ForemonTask(conf)
     monitor = Monitor(pipe=None)
     monitor.add_task(task)
@@ -147,7 +147,7 @@ async def test_interactive_exit(output: CapLines, tempfiles: Tempfiles):
     trigger = tempfiles.make_file('trigger')
 
     monitor = monitor_from_toml(f"""
-        [tools.foremon]
+        [tool.foremon]
         paths = ["{trigger}"]
         scripts = ["echo please exit"]
         """)
@@ -166,7 +166,7 @@ async def test_interactive_restart(output: CapLines, tempfiles: Tempfiles):
     trigger = tempfiles.make_file('trigger')
 
     monitor = monitor_from_toml(f"""
-        [tools.foremon]
+        [tool.foremon]
         paths = ["{trigger}"]
         scripts = ["echo ok"]
         """)
@@ -189,7 +189,7 @@ async def test_interactive_restart_long_running(output: CapLines, tempfiles: Tem
     trigger = tempfiles.make_file('trigger')
 
     monitor = monitor_from_toml(f"""
-        [tools.foremon]
+        [tool.foremon]
         paths = ["{trigger}"]
         scripts = ["echo ok", "sleep 5", "echo done"]
         """)

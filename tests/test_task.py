@@ -14,10 +14,10 @@ from .fixtures import *
 
 async def test_task_run_one_script(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     patterns = ["*"]
     scripts = ["echo Hello World!"]
-    """).tools.foremon
+    """).tool.foremon
 
     task = ForemonTask(conf)
     await task.run()
@@ -28,10 +28,10 @@ async def test_task_run_one_script(output: CapLines):
 
 async def test_task_run_multiple_sripts(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-  [tools.foremon]
+  [tool.foremon]
   patterns = ["*"]
   scripts = ["echo Hello", "echo World!"]
-  """).tools.foremon
+  """).tool.foremon
 
     task = ForemonTask(conf)
     await task.run()
@@ -43,11 +43,11 @@ async def test_task_run_multiple_sripts(output: CapLines):
 
 async def test_task_unexpected_returncode(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     patterns = ["*"]
     returncode = 1
     scripts = ["true"]
-    """).tools.foremon
+    """).tool.foremon
 
     task = ForemonTask(conf)
     await task.run()
@@ -57,11 +57,11 @@ async def test_task_unexpected_returncode(output: CapLines):
 
 async def test_task_expected_non_standard_returncode(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     patterns = ["*"]
     returncode = 1
     scripts = ["false"]
-    """).tools.foremon
+    """).tool.foremon
 
     await ForemonTask(conf).run()
     assert output.stderr_expect('starting.*')
@@ -70,11 +70,11 @@ async def test_task_expected_non_standard_returncode(output: CapLines):
 
 async def test_task_is_killed(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     patterns = ["*"]
     returncode = 0
     scripts = ["sleep 10"]
-    """).tools.foremon
+    """).tool.foremon
 
     task = ForemonTask(conf)
 
@@ -93,12 +93,12 @@ async def test_task_is_killed(output: CapLines):
 
 async def test_task_terminate(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     patterns = ["*"]
     returncode = 0
     term_signal = "SIGTERM"
     scripts = ["sleep 10"]
-    """).tools.foremon
+    """).tool.foremon
 
     task = ForemonTask(conf)
 
@@ -114,9 +114,9 @@ async def test_task_terminate(output: CapLines):
 
 async def test_task_before_after_callbacks(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     scripts = ["true"]
-    """).tools.foremon
+    """).tool.foremon
 
     async def async_before(task, trigger):
         print("BEFORE ASYNC")
@@ -144,9 +144,9 @@ async def test_task_before_after_callbacks(output: CapLines):
 
 async def test_task_run_from_queue(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     scripts = ["echo ok"]
-    """).tools.foremon
+    """).tool.foremon
 
     task = ForemonTask(conf)
     queue = asyncio.Queue()
@@ -168,12 +168,12 @@ async def test_task_run_from_queue(output: CapLines):
 
 async def test_task_run_from_queueiter(output: CapLines):
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     scripts = ["echo START 1", "sleep 0.2", "echo END 1"]
 
-        [tools.foremon.test]
+        [tool.foremon.test]
         scripts = ["echo START 2", "sleep 0.2", "echo END 2"]
-    """).tools.foremon
+    """).tool.foremon
 
     queue = asyncio.Queue()
 
@@ -192,12 +192,12 @@ async def test_task_run_from_queueiter(output: CapLines):
 def test_task_add_monitor_duplicate():
 
     conf = PyProjectConfig.parse_toml(f"""
-    [tools.foremon]
+    [tool.foremon]
     scripts = ["echo START 1", "sleep 0.2", "echo END 1"]
 
-        [tools.foremon.test]
+        [tool.foremon.test]
         scripts = ["echo START 2", "sleep 0.2", "echo END 2"]
-    """).tools.foremon
+    """).tool.foremon
 
 
     from foremon.monitor import Monitor

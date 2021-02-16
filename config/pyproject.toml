@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 
 # For developing this project
 [tool.foremon]
-ext = ["*.py"]
+patterns = ["*.py"]
 paths = ["tests/*", "foremon/*"]
 ignore = ["dist/*", "build/*"]
+scripts = ["py.test"]
 
   [tool.foremon.build]
-  exec = ["python -m build"]
+  patterns = ["*/setup.py"]
+  paths = ['./setup.py']
+  scripts = ["python -m build"]
 
-  [tool.foremon.clean]
-  exec = ["rm -rf *.egg-info build dist .coverage"]
-  once = true
+

@@ -86,7 +86,7 @@ class ForemonConfig(BaseSettings):
 ForemonConfig.update_forward_refs()
 
 
-class ToolsConfig(BaseSettings):
+class ToolConfig(BaseSettings):
 
     foremon: Optional[ForemonConfig]
 
@@ -96,7 +96,7 @@ class ToolsConfig(BaseSettings):
 
 class PyProjectConfig(BaseSettings):
 
-    tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    tool: ToolConfig = Field(default_factory=ToolConfig)
 
     class Config:
         extra = 'allow'
@@ -108,4 +108,4 @@ class PyProjectConfig(BaseSettings):
         return project
 
 
-__all__ = ['PyProjectConfig', 'ToolsConfig', 'ForemonConfig', 'Events']
+__all__ = ['PyProjectConfig', 'ToolConfig', 'ForemonConfig', 'Events']

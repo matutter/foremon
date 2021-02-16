@@ -9,17 +9,17 @@ from .fixtures import *
 
 @pytest.mark.parametrize('toml', [
     """
-[tools.foremon]
+[tool.foremon]
 scripts = ['echo ok 1', 'echo ok 2']
 paths = ['tests/input']
 """,
     """
-[tools.foremon]
+[tool.foremon]
 patterns = ['*']
 scripts = ['echo ok 1', 'echo ok 2']
 paths = ['tests/input']
 
-  [tools.foremon.test]
+  [tool.foremon.test]
   patterns = ['*']
   scripts = ['echo test']
   paths = ['tests/input']
@@ -31,13 +31,13 @@ def test_config_load_valid(toml: str):
     """
 
     project = PyProjectConfig.parse_toml(toml)
-    assert project.tools.foremon
-    assert isinstance(project.tools.foremon, ForemonConfig)
+    assert project.tool.foremon
+    assert isinstance(project.tool.foremon, ForemonConfig)
 
 
 @pytest.mark.parametrize('toml', [
     """
-[tools.other]
+[tool.other]
 key = "value"
 """,
     """
@@ -46,27 +46,27 @@ key = "value"
 ])
 def test_config_load_absent(toml: str):
     """
-    Loading a pyproject.toml where tools.foremon is absent raises no exception.
+    Loading a pyproject.toml where tool.foremon is absent raises no exception.
     """
     project = PyProjectConfig.parse_toml(toml)
-    assert project.tools.foremon is None
+    assert project.tool.foremon is None
 
 
 @pytest.mark.parametrize('toml', [
     """
-[tools.foremon]
+[tool.foremon]
 patterns = ['*']
 # Error is here
 scripts = 'echo ok 1'
 paths = ['tests/input']
 """,
     """
-[tools.foremon]
+[tool.foremon]
 patterns = ['*']
 scripts = ['echo ok 1', 'echo ok 2']
 paths = ['tests/input']
 
-  [tools.foremon.test]
+  [tool.foremon.test]
   patterns = ['*']
   scripts = ["echo test"]
   # Error is here
@@ -75,7 +75,7 @@ paths = ['tests/input']
 ])
 def test_config_load_invalid(toml: str):
     """
-    Loading a pyproject.toml where tools.foremon has invalid properties will
+    Loading a pyproject.toml where tool.foremon has invalid properties will
     raise a ValidationError.
     """
     with pytest.raises(ValidationError):
@@ -84,12 +84,12 @@ def test_config_load_invalid(toml: str):
 
 @pytest.mark.parametrize('toml', [
     """
-[tools.foremon]
+[tool.foremon]
 patterns = ['*']
 scripts = ['echo ok 1', 'echo ok 2']
 paths = ['tests/input']
 
-  [tools.foremon.test]
+  [tool.foremon.test]
   patterns = ['*']
   scripts = ['echo test']
   paths = ['tests/input']
@@ -97,44 +97,44 @@ paths = ['tests/input']
 ])
 def test_config_load_invalid(toml: str):
     """
-    Loading a pyproject.toml where tools.foremon has invalid properties
+    Loading a pyproject.toml where tool.foremon has invalid properties
     """
     project = PyProjectConfig.parse_toml(toml)
-    assert len(project.tools.foremon.configs) > 0, 'missing nested configs'
+    assert len(project.tool.foremon.configs) > 0, 'missing nested configs'
 
 
 @pytest.mark.parametrize('toml, term_signal', [
     ("""
-[tools.foremon]
+[tool.foremon]
 term_signal = 'SIGKILL'
 scripts = ['true']
 """, signal.SIGKILL),
     ("""
-[tools.foremon]
+[tool.foremon]
 term_signal = 9
 scripts = ['true']
 """, signal.SIGKILL),
     ("""
-[tools.foremon]
+[tool.foremon]
 term_signal = "9"
 scripts = ['true']
 """, signal.SIGKILL),
     ("""
-[tools.foremon]
+[tool.foremon]
 term_signal = "SIGTERM"
 scripts = ['true']
 """, signal.SIGTERM)
 ])
 def test_config_term_signal_converts_to_int(toml: str, term_signal: int):
-    conf = PyProjectConfig.parse_toml(toml).tools.foremon
+    conf = PyProjectConfig.parse_toml(toml).tool.foremon
     assert conf.term_signal == term_signal
 
 
 def test_config_defaults():
     conf = PyProjectConfig.parse_toml("""
-    [tools.foremon]
+    [tool.foremon]
     scripts = ['true']
-    """).tools.foremon
+    """).tool.foremon
 
     from foremon.config import DEFAULT_EVENTS, DEFAULT_IGNORES
 
