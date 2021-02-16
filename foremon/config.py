@@ -1,7 +1,7 @@
 import os
 import signal
-from enum import Enum, auto
-from typing import Dict, ForwardRef, List, Optional
+from enum import Enum
+from typing import Dict, List, Optional
 
 import toml
 from pydantic import BaseSettings, Field, validator
@@ -16,7 +16,7 @@ DEFAULT_EVENTS = [
     'modified', 'deleted'
 ]
 
-ForemonConfig = ForwardRef('ForemonConfig')
+#ForemonConfig = ForwardRef('ForemonConfig')
 
 class Events(str, Enum):
     created = 'created'
@@ -49,7 +49,7 @@ class ForemonConfig(BaseSettings):
     recursive:       bool = Field(True)
     events:          List[Events] = Field(default_factory=DEFAULT_EVENTS.copy)
 
-    configs:         List[ForemonConfig] = Field(default_factory=list)
+    configs:         List['ForemonConfig'] = Field(default_factory=list)
 
     @validator('term_signal', pre=True)
     def validate_term_signal(cls, value) -> int:

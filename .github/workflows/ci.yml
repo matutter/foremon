@@ -134,8 +134,7 @@ jobs:
 
     - name: Test with coverage
       run: |
-        pytest --coverage
-        coverage report
+        pytest --cov=foremon
 
   deploy:
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'matutter/water'
