@@ -78,18 +78,18 @@ found, will run scripts specified in the `[tool.foremon]` section
 # Automatic re-running
 
 When file changes are detected foremon will restart the script. If scripts are
-still running when the change is detected, foremon will signal the current
-process with `SIGTERM` before restarting.
-
-The signal used may be set in by `term_signal` in the config file.
+still running when the change is detected, foremon will ignore the event until
+the script completes and a new change occurs.
 
 # Manual restart
 
-Scripts may be manually restarted while foremon is running by typing `rs` and
-then `enter` in the terminal where foremon is running.
+Scripts may be manually restarted by typing `rs` and `enter` in the terminal
+where foremon is running. If a script is still running when `rs` is entered then
+foremon will terminate the script with a signal. By default `SIGTERM` is sent
+but the signal may be changed by setting `term_signal` in the config file.
 
 foremon can also be shutdown gracefully by typing `exit` followed by `enter`.
-Just using `ctrl+c` will will also stop any scripts if running.
+Just using `ctrl+c` has the same effect.
 
 # pyproject.toml
 
@@ -100,8 +100,8 @@ _pyproject.toml_ file foremon will automatically load defaults from the
 `[tool.foremon]` section. An alternative config file may be specified with the
 `-f` (`--config-file`) option.
 
-All configuration settings are optional but foremon wont run if are no `scripts`
-to run.
+All configuration settings are optional but foremon wont begin monitoring for
+changes if there are no `scripts` to run.
 
 ```ini
 [tool.foremon]
@@ -137,9 +137,9 @@ events = ["created", "modified"]
 
 All subsections contain the same options.
 
-foremon supports multiple sets of files to watch and scripts to run. Sections in
-the config file matching `[tool.foremon.*]`, where `*` is the alias for the
-task, may be defined in addition to the default section.
+foremon supports multiple monitor and script definitions. Sections in the config
+file matching `[tool.foremon.*]`, where `*` is the alias for the section, may be
+defined in addition to the default section.
 
 To run these other sections specify the `-a [alias]` option. The `-a` option may
 be used multiple times or the `--all` option can be used to turn on all tasks.
@@ -164,3 +164,8 @@ scripts = ["./configure"]
 
 Any command-line arguments passed to foremon only supersede definitions in
 default section.
+
+For other example of foremon's `pyproject.toml` configuration please refer to
+the [configuration samples][config].
+
+[config]: /config
