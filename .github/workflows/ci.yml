@@ -133,9 +133,9 @@ jobs:
         name: [ "source", "wheel" ]
         include:
           - name: "source"
-            pattern: "dist/foremon*.tar.gz"
+            pattern: "foremon*.tar.gz"
           - name: "wheel"
-            pattern: "dist/foremon*.whl"
+            pattern: "foremon*.whl"
     steps:
 
     - name: Set up Python 3.8
@@ -145,14 +145,13 @@ jobs:
 
     - name: Download disk artifacts
       uses: actions/download-artifact@v2
+      id: download
       with:
         name: test_files
-        path: |
-          dist
-          tests/expect/
+        path: files
 
     - name: Install foremon ${{ matrix.name }} dist
-      run: pip install ${{ matrix.pattern }}
+      run: pip install ${{steps.download.outputs.download-path}}/dist/${{ matrix.pattern }}
 
     - name: Install expect
       run: |
@@ -160,7 +159,7 @@ jobs:
         sudo apt-get install expect
 
     - name: Run expect tests
-      run: for f in `ls -1 expect`; do expect $f; done
+      run: for f in `ls -1 ${{steps.download.outputs.download-path}}/tests/expect/*.exp`; do expect $f; done
 
   coverage:
     needs: [build]
