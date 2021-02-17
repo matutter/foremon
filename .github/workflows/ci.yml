@@ -61,6 +61,7 @@ jobs:
         name: test_files
         path: |
           dist/
+          config/
           tests/expect/
 
   test:
@@ -159,7 +160,10 @@ jobs:
         sudo apt-get install expect
 
     - name: Run expect tests
-      run: for f in `ls -1 ${{steps.download.outputs.download-path}}/tests/expect/*.exp`; do expect $f; done
+      run: |
+        mv ${{steps.download.outputs.download-path}}/config config/
+        for f in `ls -1 ${{steps.download.outputs.download-path}}/tests/expect/*.exp`; do expect $f; done
+
 
   coverage:
     needs: [build]
