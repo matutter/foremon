@@ -150,3 +150,20 @@ def test_config_defaults():
     assert conf.patterns == ['*']
     assert conf.recursive == True
     assert conf.events == DEFAULT_EVENTS
+
+def test_config_expandenv(monkeypatch):
+
+    from secrets import token_hex
+    token = token_hex(10)
+    monkeypatch.setenv('MYVAR', token, prepend=False)
+
+    assert os.environ['MYVAR'] == token
+
+    conf = PyProjectConfig.parse_toml("""
+    [tool.foremon]
+    paths = ["$MYVAR"]
+    scripts = ["$MYVAR"]
+    """).tool.foremon
+
+    assert conf.paths[0] == token
+    assert conf.scripts[0] == "$MYVAR"

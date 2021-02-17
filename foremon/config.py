@@ -1,7 +1,7 @@
 import os
 import signal
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import toml
 from pydantic import BaseSettings, Field, validator
@@ -16,11 +16,13 @@ DEFAULT_EVENTS = [
     'modified', 'deleted'
 ]
 
+
 class Events(str, Enum):
     created = 'created'
     modified = 'modified'
     deleted = 'deleted'
     moved = 'moved'
+
 
 class ForemonConfig(BaseSettings):
 
@@ -56,6 +58,15 @@ class ForemonConfig(BaseSettings):
             if hasattr(signal.Signals, value):
                 value = getattr(signal.Signals, value)
         return int(value)
+
+    @validator('paths', 'patterns', 'ignore')
+    def validate_expandvars(cls, value) -> Any:
+        if value:
+            if isinstance(value, list):
+                value = list(map(os.path.expandvars, value))
+            elif isinstance(value, str):
+                value = os.path.expandvars(value)
+        return value
 
     class Config:
         env_prefix = 'foremon_'
