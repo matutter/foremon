@@ -211,11 +211,13 @@ def test_task_add_monitor_duplicate():
         mon.add_task(task)
 
 
-async def test_task_passes_environment(output: CapLines):
+async def test_task_passes_environment(output: CapLines, monkeypatch):
+
+    monkeypatch.setenv('INHERITS', 'test456', prepend=False)
 
     conf = PyProjectConfig.parse_toml("""
     [tool.foremon]
-    scripts = ["echo DATA=$MYVAR"]
+    scripts = ["echo DATA=$MYVAR", "echo DATA=$INHERITS"]
     [tool.foremon.environment]
     MYVAR = "test123"
     """).tool.foremon
@@ -223,3 +225,4 @@ async def test_task_passes_environment(output: CapLines):
     await ForemonTask(conf).run()
 
     output.stdout_expect("DATA=test123")
+    output.stdout_expect("DATA=test456")

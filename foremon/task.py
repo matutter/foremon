@@ -3,7 +3,7 @@ import atexit
 import weakref
 from asyncio.base_events import BaseEventLoop
 from asyncio.subprocess import Process, create_subprocess_shell
-from typing import Awaitable, Callable, Coroutine, List, Optional, Set, Tuple
+from typing import Awaitable, Callable, Coroutine, List, MutableMapping, Optional, Set, Tuple
 
 from .config import ForemonConfig
 from .display import *
@@ -162,7 +162,7 @@ class ForemonTask:
             try:
                 self.process = await create_subprocess_shell(
                     script, stdout=sys.stdout, stderr=sys.stderr,
-                    shell=True, env=self.config.environment)
+                    shell=True, env=self.config.get_env())
 
                 last_pid = self.process.pid
 
