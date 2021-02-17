@@ -161,7 +161,8 @@ class ForemonTask:
 
             try:
                 self.process = await create_subprocess_shell(
-                    script, stdout=sys.stdout, stderr=sys.stderr, shell=True)
+                    script, stdout=sys.stdout, stderr=sys.stderr,
+                    shell=True, env=self.config.environment)
 
                 last_pid = self.process.pid
 

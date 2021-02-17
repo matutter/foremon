@@ -209,3 +209,17 @@ def test_task_add_monitor_duplicate():
 
     with pytest.raises(ForemonError):
         mon.add_task(task)
+
+
+async def test_task_passes_environment(output: CapLines):
+
+    conf = PyProjectConfig.parse_toml("""
+    [tool.foremon]
+    scripts = ["echo DATA=$MYVAR"]
+    [tool.foremon.environment]
+    MYVAR = "test123"
+    """).tool.foremon
+
+    await ForemonTask(conf).run()
+
+    output.stdout_expect("DATA=test123")
