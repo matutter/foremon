@@ -12,7 +12,7 @@ set timeout 10
 
 # Cleanup previous runs
 spawn rm -f $EXP_TMP/trigger-1 $EXP_TMP/trigger-2
-interact
+expect EOF
 
 # Get version
 spawn foremon --version
