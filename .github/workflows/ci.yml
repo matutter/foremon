@@ -55,6 +55,15 @@ jobs:
         name: pypi_files
         path: dist
 
+    - name: Store dist artifacts for testing
+      uses: actions/upload-artifact@v2
+      with:
+        name: test_files
+        path: |
+          dist/
+          config/
+          tests/expect/
+
   test:
     needs: [build]
     timeout-minutes: 15
@@ -113,6 +122,49 @@ jobs:
     - name: Run tox
       run: "tox -e ${{ matrix.tox_env }}"
 
+  # Test the package with expect via installing it as a src-dist and wheel
+  expect-test:
+    needs: [build]
+    timeout-minutes: 15
+    name: test foremon ${{ matrix.name }} dist on ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [ "source", "wheel" ]
+        include:
+          - name: "source"
+            pattern: "foremon*.tar.gz"
+          - name: "wheel"
+            pattern: "foremon*.whl"
+    steps:
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.8"
+
+    - name: Download disk artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: test_files
+        path: "./"
+
+    - name: Install foremon ${{ matrix.name }} dist
+      run: pip install dist/${{ matrix.pattern }}
+
+    - name: Install expect
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install expect
+
+    - name: Run expect tests
+      run: |
+        mkdir tests/input
+        for f in `ls -1 tests/expect/*.exp`; do
+          expect $f
+        done
+
   coverage:
     needs: [build]
     name: coverage
@@ -138,7 +190,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'matutter/foremon'
-    needs: [build, test, coverage]
+    needs: [build, test, expect-test, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: pypi

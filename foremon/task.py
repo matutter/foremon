@@ -3,7 +3,7 @@ import atexit
 import weakref
 from asyncio.base_events import BaseEventLoop
 from asyncio.subprocess import Process, create_subprocess_shell
-from typing import Awaitable, Callable, List, Optional, Set, Tuple
+from typing import Awaitable, Callable, Coroutine, List, Optional, Set, Tuple
 
 from .config import ForemonConfig
 from .display import *
@@ -40,9 +40,9 @@ def terminate_active_tasks():
 
 class ForemonTask:
     """
-    Container for a script. This container maintains all executions of the script
-    and does not support execution multiple instances of the same script in
-    parallel.
+    Container for a script. This class maintains the state of executing scripts.
+    Different instances may run in parallel and a single instance can not be run
+    concurrently.
     """
 
     _awaitable: Optional[Awaitable]
@@ -52,7 +52,7 @@ class ForemonTask:
     config: ForemonConfig
     before_run_callbacks: List[Callable]
     after_run_callbacks: List[Callable]
-    trigger: Optional[Any]
+    loop: BaseEventLoop
 
     def __init__(self, config: ForemonConfig, loop: Optional[BaseEventLoop] = None):
         self._awaitable = None
@@ -62,7 +62,6 @@ class ForemonTask:
         self.process = None
         self.before_run_callbacks = [track_ref]
         self.after_run_callbacks = [untrack_ref]
-        self.trigger = None
 
     @property
     def name(self) -> str:
@@ -71,7 +70,7 @@ class ForemonTask:
 
     @property
     def running(self) -> bool:
-        return bool(self.process is not None)
+        return bool(self._awaitable is not None)
 
     def add_before_callback(self, callback: Callable) -> 'ForemonTask':
         self.before_run_callbacks.append(callback)
@@ -85,7 +84,11 @@ class ForemonTask:
         if not self.process:
             return
         self.pending_signals.append(sig)
-        self.process.send_signal(sig)
+        try:
+            self.process.send_signal(sig)
+        except ProcessLookupError as e:
+            # He's dead, Jim
+            pass
 
     def terminate(self) -> None:
         self.send_signal(self.config.term_signal)
@@ -106,44 +109,49 @@ class ForemonTask:
                 # good exit, may contine
                 return True, True
 
-        # An unexpected signal or exit occurred, this indicates a script failure
-        # and the batch processing should not continue
+        # An unexpected signal or exit occurred, this usually means a script
+        # failed (or stopped externally) and that batch processing should stop.
         return False, False
 
-    async def before_run(self):
-        for callback in self.before_run_callbacks[:]:
+    async def _run_callbacks(self, callbacks: List, context: Any, trigger: Any):
+        for callback in callbacks:
             try:
                 if asyncio.iscoroutinefunction(callback):
-                    await callback(self, self.trigger)
+                    await callback(self, trigger)
                 else:
-                    callback(self, self.trigger)
+                    callback(self, trigger)
             except Exception as e:
                 display_error('Error from callback', e)
 
-    async def after_run(self):
-        for callback in self.after_run_callbacks[:]:
-            try:
-                if asyncio.iscoroutinefunction(callback):
-                    await callback(self, self.trigger)
-                else:
-                    callback(self, self.trigger)
-            except Exception as e:
-                display_error('Error from callback', e)
+    def before_run(self, trigger: Any) -> Coroutine:
+        return self._run_callbacks(self.before_run_callbacks[:], self, trigger)
 
-    async def run(self, trigger: Optional[Any] = None):
-        self._check_loop()
+    def after_run(self, trigger: Any) -> Coroutine:
+        return self._run_callbacks(self.after_run_callbacks[:], self, trigger)
 
+    async def run(self, trigger: Optional[Any] = None) -> None:
         if self.running:
             return
 
-        self.trigger = trigger
+        # self.running will return True at this point
+        self._awaitable = self.loop.create_future()
+        try:
+            await self._run(trigger)
+        except Exception as e:
+            display_error(f'fatal error from task {self.name}', e)
+        finally:
+            self._awaitable.set_result(None)
+            self._awaitable = None
+        return
 
-        await self.before_run()
+    async def _run(self, trigger: Optional[Any] = None) -> None:
+
+        await self.before_run(trigger)
 
         self.pending_signals.clear()
-        # Execute the batch of scripts serially. If any script exists with
-        # an abnormal exit code or encounters an unexpected signal than
-        # then processing is stopped
+        # Execute script batch serially. If any script exits with an abnormal
+        # exit code or encounters an unexpected signal then processing is
+        # stopped.
         for script in self.config.scripts:
 
             display_success(f'starting `{script}`')
@@ -153,18 +161,16 @@ class ForemonTask:
 
             try:
                 self.process = await create_subprocess_shell(
-                    script, stdout=sys.stdout, stderr=sys.stderr, shell=True)
+                    script, stdout=sys.stdout, stderr=sys.stderr,
+                    shell=True, env=self.config.environment)
 
                 last_pid = self.process.pid
 
-                self._awaitable = self.loop.create_task(
-                    self.process.communicate())
-                await self._awaitable
+                await self.process.communicate()
 
                 returncode = self.process.returncode
             finally:
                 self.process = None
-                self._awaitable = None
 
             exit_ok, should_continue = self.process_returncode(returncode)
             if exit_ok and should_continue:
@@ -181,18 +187,9 @@ class ForemonTask:
             display_success(
                 'clean exit - waiting for changes before restart')
 
-        await self.after_run()
-
-        self.trigger = None
+        await self.after_run(trigger)
 
         return
-
-    def _check_loop(self):
-        loop = asyncio.get_event_loop()
-        if loop is None: return
-        if loop != self.loop:
-            raise RuntimeError(
-                f'Trying to run {self.name} tasks on wrong loop')
 
 
 __all__ = ['ForemonTask']

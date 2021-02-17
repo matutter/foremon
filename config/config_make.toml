@@ -1,0 +1,33 @@
+# This is a sample pyproject.toml section for foremon.
+
+[tool.foremon]
+
+    # Run with foremon -a make-fast
+    [tool.foremon.make-fast]
+    # C source code under src/, headers in include/
+    paths = ["src", "include"]
+    scripts = [
+        "make clean -j8",
+        "./configure",
+        "make all -j8"
+    ]
+
+    # Run with: foremon -a make
+    # Build without job flags a for slower, and easier to debug, build
+    [tool.foremon.make]
+    paths = ["src", "include"]
+    scripts = [
+        "make clean",
+        "./configure",
+        "make all"
+    ]
+
+    # Run with: foremon -a make-debug
+    # Build with debug flags
+    [tool.foremon.make-debug]
+    paths = ["src", "include"]
+    scripts = [
+        "make clean",
+        "./configure CCFLAGS='-g -gdb'",
+        "make all"
+    ]

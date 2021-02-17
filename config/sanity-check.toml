@@ -1,0 +1,14 @@
+# This is a sample pyproject.toml section for foremon. This is also used as a
+# sanity check test for foremon packges.
+
+[tool.foremon]
+
+    [tool.foremon.test1]
+    patterns = ["*TEST1"]
+    paths = ["tests/input"]
+    scripts = [ "echo trigger-1"]
+
+    [tool.foremon.test2]
+    patterns = ["*TEST2"]
+    paths = ["tests/input"]
+    scripts = [ "echo trigger-2"]

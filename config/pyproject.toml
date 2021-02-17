@@ -1,3 +1,6 @@
+# This is a sample pyproject.toml section for foremon. This is also used to
+# develop this project.
+
 # For building this project
 [build-system]
 requires = [ "setuptools>=42", "wheel" ]
@@ -14,5 +17,3 @@ scripts = ["py.test"]
   patterns = ["*/setup.py"]
   paths = ['./setup.py']
   scripts = ["python -m build"]
-
-
