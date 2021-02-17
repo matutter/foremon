@@ -161,9 +161,12 @@ jobs:
 
     - name: Run expect tests
       run: |
-        mv ${{steps.download.outputs.download-path}}/config config/
-        for f in `ls -1 ${{steps.download.outputs.download-path}}/tests/expect/*.exp`; do expect $f; done
-
+        for f in `ls -1 ${{steps.download.outputs.download-path}}/tests/expect/*.exp`; do
+          expect $f
+        done
+      env:
+        CONFIGDIR: ${{ steps.download.outputs.download-path }}/config
+        TEMPDIR: ${{ RUNNER_TEMP }}
 
   coverage:
     needs: [build]

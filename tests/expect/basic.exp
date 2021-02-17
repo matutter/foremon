@@ -2,10 +2,19 @@
 
 # Expect script. Expect Reference: https://linux.die.net/man/1/expect
 
+# set TMP [lindex $argv 0];
+# set CONFIGS [lindex $argv 1];
+
+set EXP_TMP /tmp
+catch {set EXP_TMP $env(TEMPDIR)}
+
+set EXP_CONFIG config
+catch {set EXP_CONFIG $env(CONFIGDIR)}
+
 set timeout 10
 
 # Cleanup previous runs
-spawn rm -f /tmp/trigger-1 /tmp/trigger-2
+spawn rm -f $EXP_TMP/trigger-1 $EXP_TMP/trigger-2
 interact
 
 # Get version
@@ -15,9 +24,9 @@ expect EOF
 # Start Test 1
 
 # will trigger test2 later
-spawn bash -c "sleep 4; touch /tmp/EXPECT_TEST2"
+spawn bash -c "sleep 4; touch $EXP_TMP/EXPECT_TEST2"
 
-spawn foremon -V -f config/sanity-check.toml -a test1 -a test2
+spawn foremon -V -f $EXP_CONFIG/sanity-check.toml -a test1 -a test2
 expect_after eof {
     send_user "\n[exec date +%s] - DONE - SUCCESS\n"
     exit 0
@@ -47,7 +56,7 @@ expect {
         exit 1
     }
 
-    "*/tmp/EXPECT_TEST2 was modified"
+    "*EXPECT_TEST2 was modified"
 }
 expect "starting*"
 expect "trigger-2"
