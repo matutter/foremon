@@ -114,7 +114,8 @@ skip = true
 # Run script like they're in this directory
 cwd = "./"
 # Key-Value paris of environment variables
-environment = { TERM = "MONO" }
+[tool.foremon.environment]
+TERM = "MONO"
 # Exit code to expect for a successful exit
 returncode = 0
 # Signal to send if the process should be terminated
