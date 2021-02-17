@@ -2,10 +2,7 @@
 
 # Expect script. Expect Reference: https://linux.die.net/man/1/expect
 
-# set TMP [lindex $argv 0];
-# set CONFIGS [lindex $argv 1];
-
-set EXP_TMP /tmp
+set EXP_TMP tests/input
 catch {set EXP_TMP $env(TEMPDIR)}
 
 set EXP_CONFIG config

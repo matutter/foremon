@@ -146,13 +146,12 @@ jobs:
 
     - name: Download disk artifacts
       uses: actions/download-artifact@v2
-      id: download
       with:
         name: test_files
-        path: files
+        path: "./"
 
     - name: Install foremon ${{ matrix.name }} dist
-      run: pip install ${{steps.download.outputs.download-path}}/dist/${{ matrix.pattern }}
+      run: pip install dist/${{ matrix.pattern }}
 
     - name: Install expect
       run: |
@@ -161,12 +160,10 @@ jobs:
 
     - name: Run expect tests
       run: |
-        for f in `ls -1 ${{steps.download.outputs.download-path}}/tests/expect/*.exp`; do
+        mkdir tests/input
+        for f in `ls -1 tests/expect/*.exp`; do
           expect $f
         done
-      env:
-        CONFIGDIR: ${{ steps.download.outputs.download-path }}/config
-        TEMPDIR: ${{ RUNNER_TEMP }}
 
   coverage:
     needs: [build]

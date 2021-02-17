@@ -5,10 +5,10 @@
 
     [tool.foremon.test1]
     patterns = ["*TEST1"]
-    paths = ["/tmp/"]
+    paths = ["tests/input"]
     scripts = [ "echo trigger-1"]
 
     [tool.foremon.test2]
     patterns = ["*TEST2"]
-    paths = ["/tmp/"]
+    paths = ["tests/input"]
     scripts = [ "echo trigger-2"]
