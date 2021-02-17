@@ -1,7 +1,7 @@
 import os
 import signal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, MutableMapping, Optional
 
 import toml
 from pydantic import BaseSettings, Field, validator
@@ -67,6 +67,11 @@ class ForemonConfig(BaseSettings):
             elif isinstance(value, str):
                 value = os.path.expandvars(value)
         return value
+
+    def get_env(self) -> MutableMapping[str, str]:
+        env = os.environ.copy()
+        env.update(self.environment)
+        return env
 
     class Config:
         env_prefix = 'foremon_'
