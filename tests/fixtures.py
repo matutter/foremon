@@ -75,12 +75,14 @@ class Tempfiles:
         self.dirs.append(path)
         return path
 
-    def make_file(self, path: str) -> str:
+    def make_file(self, path: str, content: str = b'\000\000\000\000') -> str:
         if not path.startswith(self.root):
             path = op.join(self.root, path)
         self.make_dir(op.dirname(path))
         with open(path, 'wb') as fd:
-            fd.write(b'\000\000\000\000')
+            if isinstance(content, str):
+                content = content.encode()
+            fd.write(content)
         self.files.append(path)
         return path
 

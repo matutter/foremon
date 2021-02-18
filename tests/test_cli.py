@@ -1,16 +1,28 @@
 import errno
-from foremon.display import set_display_verbose
+from foremon.display import get_display_name
 import os.path as op
 import sys
 from unittest.mock import MagicMock
-from foremon import monitor
-from foremon.task import ForemonTask
-from foremon.config import PyProjectConfig
-from foremon.monitor import Monitor
+import asyncio
+
+from foremon.app import Foremon
 from pytest_mock.plugin import MockerFixture
 
 from .cli_fixtures import *
 from .fixtures import *
+
+
+@pytest.fixture
+def noninteractive(mocker: MockerFixture) -> MagicMock:
+    loop = asyncio.get_event_loop()
+    # The Click.testing.CliRunner replaces `sys.stdin` with something that is
+    # notcompatible with `add_reader` so we just mock the call.
+    mocker.patch.object(loop, 'add_reader', lambda *_: None)
+    mocker.patch.object(loop, 'remove_reader', lambda *_: None)
+    mock: MagicMock = mocker.MagicMock(name='Foremon._run')
+    mocker.patch('foremon.app.Foremon._run', new=mock)
+    spy = mocker.spy(Foremon, 'run_forever')
+    return spy
 
 
 def test_help(cli: CliProg, output: CapLines):
@@ -25,22 +37,20 @@ def test_version(cli, output: CapLines):
     assert output.stdout_expect(__version__)
 
 
-def test_paths_do_not_exist(cli, output: CapLines):
-    from foremon import __version__
+def test_paths_do_not_exist(noninteractive, cli, output: CapLines):
     result: Result = cli('-w this/does/not/exist -- true')
     assert result.exit_code == errno.ENOENT
 
 
-def test_cli_dry_run(cli, output: CapLines):
-    result: Result = cli('-V --dry-run -- true')
+def test_cli_dry_run(noninteractive, cli, output: CapLines):
+    result: Result = cli('--dry-run -- true')
     assert output.stderr_expect('dry run complete')
+    assert result.exit_code == 0
 
 
-def test_cli_config_file(cli, output: CapLines, tempfiles: Tempfiles):
-    conf = tempfiles.make_file("config")
+def test_cli_config_file(noninteractive, cli, output: CapLines, tempfiles: Tempfiles):
 
-    with open(conf, 'w') as fd:
-        fd.write("""
+    conf = tempfiles.make_file("config", content="""
         [tool.foremon]
         scripts = ["echo ok"]
 
@@ -51,167 +61,104 @@ def test_cli_config_file(cli, output: CapLines, tempfiles: Tempfiles):
             scripts = ["echo ok"]
         """)
 
-    result: Result = cli('-V --dry-run --all -f', conf)
+    cli('-V --dry-run --all -f', conf)
+
     assert output.stderr_expect(f'loaded.*config from {conf}')
     assert output.stderr_expect('task default ready.*')
     assert output.stderr_expect('task test1 ready.*')
     assert output.stderr_expect('task test2 ready.*')
 
 
-def test_cli_chdir(mocker, cli):
-    mock: MagicMock = mocker.MagicMock(name='start_monitor')
-    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
+def test_cli_chdir(noninteractive: MagicMock, cli):
 
-    result: Result = cli('-V --dry-run --chdir /tmp -- true')
+    cli('-V --dry-run --chdir /tmp -- true')
 
-    m: Monitor = mock.call_args[0][0]
-    t: ForemonTask = m.all_tasks.pop()
-    assert t
-    assert t.config.cwd == '/tmp'
-
-
-def test_cli_unsafe(mocker, cli):
-    mock: MagicMock = mocker.MagicMock(name='start_monitor')
-    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
-
-    result: Result = cli('-V --dry-run --unsafe -- true')
-
-    m: Monitor = mock.call_args[0][0]
-    t: ForemonTask = m.all_tasks.pop()
-    assert t
-    assert t.config.ignore_defaults == []
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+    assert isinstance(f, Foremon)
+    assert f.options.cwd == '/tmp'
+    assert f.config.cwd == '/tmp'
 
 
-def test_cli_ignore(mocker, cli):
-    mock: MagicMock = mocker.MagicMock(name='start_monitor')
-    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
+def test_cli_unsafe(noninteractive: MagicMock, cli):
 
-    result: Result = cli('-V --dry-run -i "*.test1" -i "*.test2" -- true')
+    cli('-V --dry-run --unsafe -- true')
 
-    m: Monitor = mock.call_args[0][0]
-    t: ForemonTask = m.all_tasks.pop()
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+    assert isinstance(f, Foremon)
+    assert f.config.ignore_defaults == []
+    assert f.config == f.tasks[0].config
+
+
+def test_cli_ignore(noninteractive: MagicMock, cli):
+
+    cli('-V --dry-run -i "*.test1" -i "*.test2" -- true')
+
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+    assert isinstance(f, Foremon)
+    assert f.tasks
+    t: Foremon = f.tasks[0]
     assert t
     assert "*.test1" in t.config.ignore
     assert "*.test2" in t.config.ignore
 
 
-def test_cli_scripts(mocker, cli):
-    mock: MagicMock = mocker.MagicMock(name='start_monitor')
-    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
+def test_cli_scripts(noninteractive: MagicMock, cli):
 
-    result: Result = cli('-V --dry-run -x "echo 1" -x "echo 2" -- echo 3')
+    cli('-V --dry-run -x "echo 1" -x "echo 2" -- echo 3')
 
-    m: Monitor = mock.call_args[0][0]
-    t: ForemonTask = m.all_tasks.pop()
-    assert t
-    assert "echo 1" in t.config.scripts
-    assert "echo 2" in t.config.scripts
-    assert "echo 3" in t.config.scripts
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+    assert isinstance(f, Foremon)
+    assert f.tasks
+    assert f.tasks[0].config == f.config
+    assert "echo 1" in f.config.scripts
+    assert "echo 2" in f.config.scripts
+    assert "echo 3" in f.config.scripts
 
-def test_cli_guess_script(mocker, cli):
-    mock: MagicMock = mocker.MagicMock(name='start_monitor')
-    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
 
-    script = get_sample_file('script1.py')
-    result: Result = cli(script)
+def test_cli_guess_script(noninteractive: MagicMock, cli):
 
-    m: Monitor = mock.call_args[0][0]
-    t: ForemonTask = m.all_tasks.pop()
-    assert t
-    guess = t.config.scripts[0]
+    cli(get_sample_file('script1.py'))
+
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+    guess = f.config.scripts[0]
     assert op.basename(sys.executable) in guess
 
-def test_cli_guess_module(mocker, cli):
-    mock: MagicMock = mocker.MagicMock(name='start_monitor')
-    mocker.patch('foremon.cli.Util.start_monitor', new=mock)
 
-    script = get_sample_file('module1')
-    result: Result = cli(script)
+def test_cli_guess_module(noninteractive: MagicMock, cli):
 
-    m: Monitor = mock.call_args[0][0]
-    t: ForemonTask = m.all_tasks.pop()
-    assert t
-    guess = t.config.scripts[0]
+    cli(get_sample_file('module1'))
+
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+    guess = f.config.scripts[0]
     assert op.basename(sys.executable) + ' -m' in guess
 
-def monitor_from_toml(toml: str) -> Monitor:
-    conf = PyProjectConfig.parse_toml(toml).tool.foremon
-    task = ForemonTask(conf)
-    monitor = Monitor(pipe=None)
-    monitor.add_task(task)
-    return monitor
+def test_cli_guess_modules_in_env(noninteractive: MagicMock, cli):
+
+    cli('pytest --markers')
+
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+    guess = f.config.scripts[0]
+    assert op.basename(sys.executable) + ' -m' in guess
+
+def test_cli_config_bad_path(noninteractive, cli, output: CapLines, tempfiles: Tempfiles):
+
+    config = tempfiles.make_file("config.toml")
+
+    cli('-V --dry-run -f', config + "_oops")
+
+    assert output.stderr_expect('cannot find config file.*')
+    assert output.stderr_expect('no scripts.*nothing to do.*')
 
 
-async def test_interactive_exit(output: CapLines, tempfiles: Tempfiles):
-
-    trigger = tempfiles.make_file('trigger')
-
-    monitor = monitor_from_toml(f"""
-        [tool.foremon]
-        paths = ["{trigger}"]
-        scripts = ["echo please exit"]
-        """)
-
-    def do_exit():
-        monitor.handle_input('exit')
-
-    monitor.loop.call_later(1.0, do_exit)
-    await monitor.start_interactive()
-    assert output.stderr_expect('starting.*')
-    assert output.stderr_expect('clean exit.*')
-    assert output.stderr_expect('stopping.*')
-
-async def test_interactive_restart(output: CapLines, tempfiles: Tempfiles):
-
-    trigger = tempfiles.make_file('trigger')
-
-    monitor = monitor_from_toml(f"""
-        [tool.foremon]
-        paths = ["{trigger}"]
-        scripts = ["echo ok"]
-        """)
-
-    def do_exit():
-        monitor.handle_input('exit')
-
-    def do_restart():
-        monitor.handle_input('rs')
-        monitor.loop.call_later(1.0, do_exit)
-
-    monitor.loop.call_soon(do_restart)
-
-    await monitor.start_interactive()
-    assert output.stdout_expect('ok')
-    assert output.stdout_expect('ok')
-
-async def test_interactive_restart_long_running(output: CapLines, tempfiles: Tempfiles):
-
-    trigger = tempfiles.make_file('trigger')
-
-    monitor = monitor_from_toml(f"""
-        [tool.foremon]
-        paths = ["{trigger}"]
-        scripts = ["echo ok", "sleep 5", "echo done"]
-        """)
-
-    def do_exit():
-        monitor.handle_input('exit')
-
-    def do_restart():
-        monitor.handle_input('rs')
-        monitor.loop.call_later(1.0, do_exit)
-
-    monitor.loop.call_later(1.0, do_restart)
-
-    await monitor.start_interactive()
-    assert output.stderr_expect('starting.*')
-    assert output.stderr_expect('terminated.*')
-    assert output.stderr_expect('starting.*')
-
-def test_cli_skip_tasks(output: CapLines):
-    from foremon.cli import Util
-
-    conf = PyProjectConfig.parse_toml("""
+def test_cli_skip_tasks(noninteractive, cli, output: CapLines, tempfiles: Tempfiles):
+    config = tempfiles.make_file("config.toml", content="""
     [tool.foremon]
     scripts = ["true"]
 
@@ -220,35 +167,39 @@ def test_cli_skip_tasks(output: CapLines):
         [tool.foremon.other2]
         scripts = ["true"]
         skip = true
-    """).tool.foremon
+    """)
 
-    m: Monitor = Monitor()
-
-    tasks = Util.get_active_tasks(conf, [], use_all=True)
-    Util.add_tasks(m, tasks)
-    assert len(m.all_tasks) == 1
-
+    cli('-V --dry-run -f', config)
+    assert output.stderr_expect('task default ready.*')
     assert output.stderr_expect('task other1.*skipped.*scripts.*empty')
     assert output.stderr_expect('task other2.*skipped')
-    assert output.stderr_expect('task default ready.*')
 
 
-def test_cli_skip_tasks2(cli, output: CapLines, tempfiles: Tempfiles):
-    conf = tempfiles.make_file("config")
+def test_cli_empty_config(noninteractive, cli, output: CapLines, tempfiles: Tempfiles):
+    config = tempfiles.make_file("config.toml", content="""
+    # For building this project
+    [build-system]
+    requires = [ "setuptools>=42", "wheel" ]
+    build-backend = "setuptools.build_meta"
+    """)
 
-    with open(conf, 'w') as fd:
-        fd.write("""
-        [tool.foremon]
-        scripts = ["true"]
+    cli('-V --dry-run -f', config)
+    assert output.stderr_expect(r'no \[tool.foremon\] section specified in.*')
+    assert output.stderr_expect('no scripts.* nothing to do.*')
 
-            [tool.foremon.other1]
 
-            [tool.foremon.other2]
-            scripts = ["true"]
-            skip = true
-        """)
+def test_cli_invoke_as_module(mocker: MagicMock):
+    mocked_main: MagicMock = mocker.MagicMock(name='main')
+    mocker.patch('foremon.cli.foremon.main', mocked_main)
 
-    result: Result = cli('-V --dry-run -f', conf)
-    assert output.stderr_expect('task other1.*skipped.*scripts.*empty')
-    assert output.stderr_expect('task other2.*skipped')
-    assert output.stderr_expect('task default ready.*')
+    name: MagicMock = mocker.MagicMock(name='set_display_name')
+    mocker.patch('foremon.display.set_display_name', name, lambda _: None)
+
+    old_name =  get_display_name()
+    from foremon.cli import main
+    main()
+
+    # Should be mocked and not changed
+    assert old_name == get_display_name()
+    assert mocked_main.call_count == 1
+    assert name.call_args[0][0] == 'foremon'

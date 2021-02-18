@@ -46,22 +46,19 @@ class ForemonTask:
     """
 
     _awaitable: Optional[Awaitable]
-    alias: str
-    pending_signals: List[int]
-    process: Optional[Process]
     config: ForemonConfig
     before_run_callbacks: List[Callable]
     after_run_callbacks: List[Callable]
     loop: BaseEventLoop
+    run_count: int
 
     def __init__(self, config: ForemonConfig, loop: Optional[BaseEventLoop] = None):
         self._awaitable = None
         self.config = config
         self.loop = loop or asyncio.get_event_loop()
-        self.pending_signals = []
-        self.process = None
         self.before_run_callbacks = [track_ref]
         self.after_run_callbacks = [untrack_ref]
+        self.run_count = 0
 
     @property
     def name(self) -> str:
@@ -73,45 +70,17 @@ class ForemonTask:
         return bool(self._awaitable is not None)
 
     def add_before_callback(self, callback: Callable) -> 'ForemonTask':
-        self.before_run_callbacks.append(callback)
+        if callback not in self.before_run_callbacks:
+            self.before_run_callbacks.append(callback)
         return self
 
     def add_after_callback(self, callback: Callable) -> 'ForemonTask':
-        self.after_run_callbacks.append(callback)
+        if callback not in self.after_run_callbacks:
+            self.after_run_callbacks.append(callback)
         return self
 
-    def send_signal(self, sig: int) -> None:
-        if not self.process:
-            return
-        self.pending_signals.append(sig)
-        try:
-            self.process.send_signal(sig)
-        except ProcessLookupError as e:
-            # He's dead, Jim
-            pass
-
     def terminate(self) -> None:
-        self.send_signal(self.config.term_signal)
-
-    def process_returncode(self, returncode: int) -> Tuple[bool, bool]:
-        if self.config.returncode == returncode:
-            return True, True
-
-        # signals are returned as -SIGNAL
-        if returncode < 0:
-            sig = abs(returncode)
-            is_pending = sig in self.pending_signals
-
-            if is_pending and sig == self.config.term_signal:
-                # good exit, but do not continue
-                return True, False
-            elif is_pending:
-                # good exit, may contine
-                return True, True
-
-        # An unexpected signal or exit occurred, this usually means a script
-        # failed (or stopped externally) and that batch processing should stop.
-        return False, False
+        pass
 
     async def _run_callbacks(self, callbacks: List, context: Any, trigger: Any):
         for callback in callbacks:
@@ -135,6 +104,7 @@ class ForemonTask:
 
         # self.running will return True at this point
         self._awaitable = self.loop.create_future()
+        self.run_count += 1
         try:
             await self._run(trigger)
         except Exception as e:
@@ -145,7 +115,23 @@ class ForemonTask:
         return
 
     async def _run(self, trigger: Optional[Any] = None) -> None:
+        pass
 
+
+class ScriptTask(ForemonTask):
+
+    process: Optional[Process]
+    pending_signals: List[int]
+
+    def __init__(self, config: ForemonConfig, loop: BaseEventLoop = None):
+        super().__init__(config, loop)
+        self.process = None
+        self.pending_signals = []
+
+    def terminate(self) -> None:
+        self.send_signal(self.config.term_signal)
+
+    async def _run(self, trigger: Optional[Any] = None) -> None:
         await self.before_run(trigger)
 
         self.pending_signals.clear()
@@ -191,5 +177,35 @@ class ForemonTask:
 
         return
 
+    def send_signal(self, sig: int) -> None:
+        if not self.process:
+            return
+        self.pending_signals.append(sig)
+        try:
+            self.process.send_signal(sig)
+        except ProcessLookupError as e:
+            # He's dead, Jim
+            pass
 
-__all__ = ['ForemonTask']
+    def process_returncode(self, returncode: int) -> Tuple[bool, bool]:
+        if self.config.returncode == returncode:
+            return True, True
+
+        # signals are returned as -SIGNAL
+        if returncode < 0:
+            sig = abs(returncode)
+            is_pending = sig in self.pending_signals
+
+            if is_pending and sig == self.config.term_signal:
+                # good exit, but do not continue
+                return True, False
+            elif is_pending:
+                # good exit, may contine
+                return True, True
+
+        # An unexpected signal or exit occurred, this usually means a script
+        # failed (or stopped externally) and that batch processing should stop.
+        return False, False
+
+
+__all__ = ['ForemonTask', 'ScriptTask']

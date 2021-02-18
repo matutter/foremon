@@ -19,7 +19,7 @@ from .task import *
 
 class Monitor:
 
-    loop: BaseEventLoop
+    _loop: BaseEventLoop
     observer: Observer
     pipe: Optional[TextIO]
     queue: Queue
@@ -38,12 +38,16 @@ class Monitor:
         self.stop_timeout = 5
         self.observer = Observer()
         self.pipe = pipe
-        self.loop = loop
+        self._loop = loop
         self.queue = Queue()
         self.current_files = set()
         self.active_tasks = set()
         self.all_tasks = set()
         self.is_terminating = False
+
+    @property
+    def loop(self):
+        return self._loop
 
     def add_task(self, task: ForemonTask) -> 'Monitor':
 
@@ -95,6 +99,23 @@ class Monitor:
         self.all_tasks.add(task)
 
         return self
+
+    def reset(self):
+        self.observer.unschedule_all()
+        self.all_tasks.clear()
+
+    def set_pipe(self, pipe: TextIO):
+        # Pipe is usually only set None in testing due to a conflict with
+        # Click.testing.CliRunner's implementation.
+        try:
+            if self.pipe is not None:
+                self.loop.remove_reader(self.pipe)
+        except:
+            pass
+
+        self.pipe = pipe
+        if self.pipe is not None:
+            self.loop.add_reader(self.pipe, self._repl)
 
     def queue_all_tasks(self):
         for task in list(self.all_tasks):
@@ -172,22 +193,15 @@ class Monitor:
                 try:
                     await task
                 except Exception as e:
-                    display_error('unhandled error', e)
+                    display_error('fatal error, shutting down ...', e)
                     break
 
         try:
-            # Pipe is usually only set None in testing due to a conflict with
-            # Click.testing.CliRunner's implementation.
-            if self.pipe is not None:
-                self.loop.add_reader(self.pipe, self._repl)
-
             await cradle()
-        except KeyboardInterrupt:
-            pass
-        except EOFError:
-            pass
+        except (KeyboardInterrupt, EOFError):
+            display_debug('stopping ...')
         except Exception as e:
-            display_error('an unhandled error occurred', e)
+            display_error('fatal error, shutting down ...', e)
 
         self.stop()
 
@@ -210,4 +224,5 @@ class Monitor:
             return
 
     def _repl(self):
-        self.handle_input(self.pipe.readline().lower())
+        line = self.pipe.readline().lower()
+        self.handle_input(line)
