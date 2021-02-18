@@ -68,11 +68,6 @@ setup(
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    # Well - it works
-    # 'Programming Language :: Python :: 4.0',
     'Topic :: Software Development :: Build Tools',
     'Topic :: Software Development :: Libraries',
     'Topic :: System :: Filesystems',

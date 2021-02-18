@@ -48,8 +48,7 @@ Using docker.
 python -m build
 # Run tests in python:3.8
 ./scripts/expect/docker.sh
+./scripts/expect/docker.sh 3.6
+./scripts/expect/docker.sh 3.7
 ./scripts/expect/docker.sh 3.9
-./scripts/expect/docker.sh 3.10
-./scripts/expect/docker.sh 3.11
-./scripts/expect/docker.sh 3.12
 ```

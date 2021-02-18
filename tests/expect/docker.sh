@@ -9,6 +9,10 @@ root="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." >/dev/null 2>&1 && pwd )"
 
 PYTHON_VERSION=${PYTHON_VERSION:-"3.8"}
 
+if test -n "$1"; then
+    PYTHON_VERSION="$1"
+fi
+
 cd $root
 
 docker run -it --rm \
