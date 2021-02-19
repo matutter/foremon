@@ -87,8 +87,9 @@ def test_cli_unsafe(noninteractive: MagicMock, cli):
     f: Foremon = noninteractive.call_args[0][0]
     assert f
     assert isinstance(f, Foremon)
-    assert f.config.ignore_defaults == []
-    assert f.config == f.tasks[0].config
+    t = f.get_task('default')
+    assert t.config.ignore_defaults == []
+    assert f.config == t.config
 
 
 def test_cli_ignore(noninteractive: MagicMock, cli):
@@ -99,7 +100,7 @@ def test_cli_ignore(noninteractive: MagicMock, cli):
     assert f
     assert isinstance(f, Foremon)
     assert f.tasks
-    t: Foremon = f.tasks[0]
+    t: Foremon = f.get_task('default')
     assert t
     assert "*.test1" in t.config.ignore
     assert "*.test2" in t.config.ignore
@@ -113,7 +114,7 @@ def test_cli_scripts(noninteractive: MagicMock, cli):
     assert f
     assert isinstance(f, Foremon)
     assert f.tasks
-    assert f.tasks[0].config == f.config
+    assert f.get_task('default').config == f.config
     assert "echo 1" in f.config.scripts
     assert "echo 2" in f.config.scripts
     assert "echo 3" in f.config.scripts
@@ -184,7 +185,7 @@ def test_cli_empty_config(noninteractive, cli, output: CapLines, tempfiles: Temp
     """)
 
     cli('-V --dry-run -f', config)
-    assert output.stderr_expect(r'no \[tool.foremon\] section specified in.*')
+    assert output.stderr_expect(r'no .tool.foremon. section specified in.*')
     assert output.stderr_expect('no scripts.* nothing to do.*')
 
 

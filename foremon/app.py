@@ -12,6 +12,37 @@ from foremon.task import ForemonTask, ScriptTask
 from foremon.util import guess_args, relative_if_cwd
 
 DEFAULT_CONFIG = op.join(os.getcwd(), "pyproject.toml")
+AUTO_RELOAD_ALIAS = 'foremon-auto-reload'
+
+
+class ReloadTask(ForemonTask):
+    """
+    This task will reload the Foremon app when a config change is detected.
+    """
+
+    app: 'Foremon'
+    config_file: str
+
+    def __init__(self, app: 'Foremon', config_file: str):
+        super().__init__(ForemonConfig(
+            alias=AUTO_RELOAD_ALIAS,
+            skip=False,
+            paths=[op.dirname(config_file)],
+            patterns=[op.basename(config_file)]))
+        self.app = app
+        self.config_file = config_file
+
+    async def _run(self, ev: FileSystemEvent):
+        if not ev or not isinstance(ev, FileSystemEvent):
+            return
+
+        display_info(
+            f'config {self.config_file} was {ev.event_type}, reloading ...')
+        try:
+            self.app.reload()
+        except Exception as e:
+            display_error('fatal error, stopping', e)
+            self.app.monitor.handle_input('exit')
 
 
 class Foremon:
@@ -28,6 +59,12 @@ class Foremon:
     @property
     def tasks(self) -> List[ForemonTask]:
         return list(self.monitor.all_tasks)
+
+    def get_task(self, name: str) -> Optional[ForemonTask]:
+        for task in self.tasks:
+            if task.name == name:
+                return task
+        return None
 
     def get_pipe(self):
         return sys.stdin
@@ -76,6 +113,9 @@ class Foremon:
                     'loaded [tool.foremon] config from', config_file)
                 self.config = config
         return
+
+    def _new_reload_task(self, config_file: str) -> ForemonTask:
+        return ReloadTask(self, config_file)
 
     def _extend_default_config(self):
         c: ForemonConfig = self.config
@@ -136,6 +176,15 @@ class Foremon:
             except:
                 pass
 
+    def reload(self):
+        # pause events
+        with self.monitor.paused():
+            self.monitor.reset()
+            self.load_config()
+            self.reset_monitor()
+
+        self.monitor.queue_all_tasks()
+
     def reset_monitor(self):
         self.monitor.reset()
         self.monitor.set_pipe(self.get_pipe())
@@ -144,6 +193,11 @@ class Foremon:
             task.add_before_callback(self._before_task_runs)
             self.monitor.add_task(task)
             display_debug("task", task.name, "ready for monitor")
+
+        # Do not schedule an auto-reload if there were no scripts
+        if self.monitor.all_tasks and self.options.auto_reload:
+            self.monitor.add_task(
+                self._new_reload_task(self.options.config_file))
 
     def _make_tasks(self):
         """

@@ -137,6 +137,7 @@ class ForemonOptions(BaseModel):
     unsafe: bool = Field(False)
     use_all: bool = Field(False)
     verbose: bool = Field(False)
+    auto_reload: bool = Field(True)
 
 
 __all__ = ['PyProjectConfig', 'ToolConfig', 'ForemonConfig', 'Events', 'ForemonOptions']

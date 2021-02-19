@@ -10,7 +10,7 @@ from watchdog.observers import Observer
 
 from foremon.config import ForemonConfig
 from foremon.errors import ForemonError
-
+from contextlib import contextmanager
 from .config import *
 from .display import *
 from .queue import *
@@ -29,6 +29,7 @@ class Monitor:
     active_tasks: Set[ForemonTask]
     all_tasks: Set[ForemonTask]
     is_terminating: bool
+    is_paused: bool
 
     def __init__(self, pipe=None, loop: BaseEventLoop = None):
 
@@ -44,6 +45,7 @@ class Monitor:
         self.active_tasks = set()
         self.all_tasks = set()
         self.is_terminating = False
+        self.is_paused = False
 
     @property
     def loop(self):
@@ -122,14 +124,14 @@ class Monitor:
             self.queue_task_event(task, None)
 
     def queue_task_event(self, task: ForemonTask, ev: Optional[FileSystemEvent] = None) -> None:
-        if self.is_terminating:
+        if self.is_terminating or self.is_paused:
             return
 
         task = self.loop.create_task(self.run_task(task, ev))
         self.loop.call_soon_threadsafe(self.queue.put_nowait, task)
 
     async def run_task(self, task: ForemonTask, trigger: Any) -> None:
-        if self.is_terminating:
+        if self.is_terminating or self.is_paused:
             return
 
         if not self.observer.is_alive():
@@ -137,6 +139,9 @@ class Monitor:
 
         # bounce until task is done
         if task in self.active_tasks:
+            return
+
+        if task.running:
             return
 
         self.active_tasks.add(task)
@@ -151,6 +156,17 @@ class Monitor:
         self.terminate_tasks()
         for task in list(self.all_tasks):
             self.loop.call_later(0.1, self.queue_task_event, task)
+
+    @contextmanager
+    def paused(self):
+        """
+        Stop running tasks while the monitor is paused
+        """
+        try:
+            self.is_paused = True
+            yield
+        finally:
+            self.is_paused = False
 
     def terminate_tasks(self):
         for task in list(self.all_tasks):
