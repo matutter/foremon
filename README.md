@@ -1,5 +1,12 @@
 # foremon
 
+[![ci](https://github.com/matutter/foremon/workflows/CI/badge.svg?event=push)](https://github.com/matutter/foremon/actions?query=event%3Apush+branch%3Amaster+workflow%3ACI)
+[![coverage](https://codecov.io/gh/matutter/foremon/branch/master/graph/badge.svg)](https://codecov.io/gh/matutter/foremon)
+[![pypi](https://img.shields.io/pypi/v/foremon.svg)](https://pypi.python.org/pypi/foremon)
+[![downloads](https://img.shields.io/pypi/dm/foremon.svg)](https://pypistats.org/packages/foremon)
+[![versions](https://img.shields.io/pypi/pyversions/foremon.svg)](https://github.com/matutter/foremon)
+[![license](https://img.shields.io/github/license/matutter/foremon.svg)](https://github.com/matutter/foremon/blob/master/LICENSE)
+
 foremon is a tool to help develop python projects by executing build tasks when
 file changes are detected.
 
