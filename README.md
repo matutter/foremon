@@ -176,7 +176,7 @@ scripts = ["./configure"]
 Any command-line arguments passed to foremon only supersede definitions in
 default section.
 
-For other example of foremon's `pyproject.toml` configuration please refer to
-the [configuration samples][config].
+Refer to the [configuration samples][config] for more examples of configuring
+foremon.
 
 [config]: /config
