@@ -104,7 +104,7 @@ All configuration settings are optional but foremon wont begin monitoring for
 changes if there are no `scripts` to run.
 
 foremon will also automatically reload the config file if it changes while
-foremon is running.
+foremon is running. Using the `--no-reload` option will disable this feature.
 
 ```ini
 [tool.foremon]
