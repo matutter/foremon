@@ -35,9 +35,8 @@ class ReloadTask(ForemonTask):
     async def _run(self, ev: FileSystemEvent):
         if not ev or not isinstance(ev, FileSystemEvent):
             return
-
         display_info(
-            f'config {self.config_file} was {ev.event_type}, reloading ...')
+            f'config {relative_if_cwd(ev.src_path)} was {ev.event_type}, reloading ...')
         try:
             self.app.reload()
         except Exception as e:
@@ -106,11 +105,11 @@ class Foremon:
             config = project.tool.foremon
             if config is None:
                 display_debug(
-                    'no [tool.foremon] section specified in', config_file)
+                    'no [tool.foremon] section specified in', relative_if_cwd(config_file))
                 self.config = ForemonConfig()
             else:
                 display_success(
-                    'loaded [tool.foremon] config from', config_file)
+                    'loaded [tool.foremon] config from', relative_if_cwd(config_file))
                 self.config = config
         return
 

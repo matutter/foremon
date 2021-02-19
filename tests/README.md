@@ -11,7 +11,8 @@ _[Expect][expect]_ and may be done manually or automatically with CI from
 
 # Manual testing
 
-These commands are used for testing manually.
+Manual testing for a release involves the steps shows in this section. These
+commands are used for testing manually.
 
 ### PyTest
 

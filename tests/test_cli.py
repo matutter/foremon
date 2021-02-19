@@ -63,7 +63,7 @@ def test_cli_config_file(noninteractive, cli, output: CapLines, tempfiles: Tempf
 
     cli('-V --dry-run --all -f', conf)
 
-    assert output.stderr_expect(f'loaded.*config from {conf}')
+    assert output.stderr_expect(f'loaded.*config from.*{op.basename(conf)}')
     assert output.stderr_expect('task default ready.*')
     assert output.stderr_expect('task test1 ready.*')
     assert output.stderr_expect('task test2 ready.*')
