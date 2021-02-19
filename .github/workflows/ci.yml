@@ -166,8 +166,10 @@ jobs:
         done
 
   coverage:
+    if: github.event_name == 'push' && github.repository == 'matutter/foremon'
     needs: [build]
     name: coverage
+    environment: pypi
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -188,13 +190,15 @@ jobs:
       run: |
         pytest --cov=foremon
 
-    - run: coverage xml
+    - name: Generate coverage report
+      run: coverage xml
 
-    - name: Store coverage artifacts for codecov
-      uses: actions/upload-artifact@v2
+    - name: Upload coverage to CodeCov
+      uses: codecov/codecov-action@v1.2.1
       with:
-        name: coverage_files
-        path: coverage.xml
+        file: ./coverage.xml
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   deploy:
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'matutter/foremon'
@@ -234,25 +238,3 @@ jobs:
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPY_TOKEN }}
-
-
-  upload-coverage:
-    if: github.event_name == 'push' && github.repository == 'matutter/foremon'
-    needs: [coverage]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: pypi
-    steps:
-
-    - name: Download coverage artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: coverage_files
-        path: "./"
-
-    - name: Upload coverage to CodeCov
-      uses: codecov/codecov-action@v1.2.1
-      with:
-        file: ./coverage.xml
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
