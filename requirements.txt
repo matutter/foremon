@@ -2,12 +2,13 @@ ansicolors==1.1.8
 autopep8==1.5.5
 build==0.2.1
 click==7.1.2
+pydantic==1.7.3
 pytest-asyncio==0.14.0
+pytest-cov==2.11.1
+pytest-mock==3.5.1
+pytest-xdist==2.2.1
 pytest==6.2.2
+toml==0.10.2
 tox==3.21.4
 twine==3.3.0
 watchdog==1.0.2
-toml==0.10.2
-pydantic==1.7.3
-pytest-mock==3.5.1
-pytest-cov==2.11.1

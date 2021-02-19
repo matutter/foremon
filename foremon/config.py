@@ -2,6 +2,7 @@ import os
 import signal
 from enum import Enum
 from typing import Any, Dict, List, MutableMapping, Optional
+from pydantic.main import BaseModel
 
 import toml
 from pydantic import BaseSettings, Field, validator
@@ -123,4 +124,20 @@ class PyProjectConfig(BaseSettings):
         return project
 
 
-__all__ = ['PyProjectConfig', 'ToolConfig', 'ForemonConfig', 'Events']
+class ForemonOptions(BaseModel):
+    aliases: List[str] = Field(['default'])
+    config_file: Optional[str]
+    cwd: Optional[str]
+    dry_run: bool = Field(False)
+    ignore: List[str] = Field([])
+    no_guess: bool = Field(False)
+    paths: List[str] = Field([])
+    patterns: List[str] = Field([])
+    scripts: List[str] = Field([])
+    unsafe: bool = Field(False)
+    use_all: bool = Field(False)
+    verbose: bool = Field(False)
+    auto_reload: bool = Field(True)
+
+
+__all__ = ['PyProjectConfig', 'ToolConfig', 'ForemonConfig', 'Events', 'ForemonOptions']

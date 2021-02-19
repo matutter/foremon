@@ -6,7 +6,7 @@ import signal
 
 from foremon.config import *
 from foremon.display import display_info
-from foremon.task import ForemonTask
+from foremon.task import ScriptTask
 from pydantic.error_wrappers import ValidationError
 
 from .fixtures import *
@@ -19,7 +19,7 @@ async def test_task_run_one_script(output: CapLines):
     scripts = ["echo Hello World!"]
     """).tool.foremon
 
-    task = ForemonTask(conf)
+    task = ScriptTask(conf)
     await task.run()
     assert output.stderr_expect('starting.*')
     assert output.stdout_expect('Hello World!')
@@ -33,7 +33,7 @@ async def test_task_run_multiple_sripts(output: CapLines):
   scripts = ["echo Hello", "echo World!"]
   """).tool.foremon
 
-    task = ForemonTask(conf)
+    task = ScriptTask(conf)
     await task.run()
     assert output.stderr_expect('starting.*')
     assert output.stdout_expect('Hello')
@@ -49,7 +49,7 @@ async def test_task_unexpected_returncode(output: CapLines):
     scripts = ["true"]
     """).tool.foremon
 
-    task = ForemonTask(conf)
+    task = ScriptTask(conf)
     await task.run()
     assert output.stderr_expect('starting.*')
     assert output.stderr_expect('app crashed.*')
@@ -63,7 +63,7 @@ async def test_task_expected_non_standard_returncode(output: CapLines):
     scripts = ["false"]
     """).tool.foremon
 
-    await ForemonTask(conf).run()
+    await ScriptTask(conf).run()
     assert output.stderr_expect('starting.*')
     assert output.stderr_expect('clean exit.*')
 
@@ -76,7 +76,7 @@ async def test_task_is_killed(output: CapLines):
     scripts = ["sleep 10"]
     """).tool.foremon
 
-    task = ForemonTask(conf)
+    task = ScriptTask(conf)
 
     def do_later():
         if task.running:
@@ -100,7 +100,7 @@ async def test_task_terminate(output: CapLines):
     scripts = ["sleep 10"]
     """).tool.foremon
 
-    task = ForemonTask(conf)
+    task = ScriptTask(conf)
 
     def do_later():
         if task.running:
@@ -130,7 +130,7 @@ async def test_task_before_after_callbacks(output: CapLines):
     def after(task, trigger):
         print("AFTER NORMAL")
 
-    await (ForemonTask(conf)
+    await (ScriptTask(conf)
         .add_before_callback(async_before)
         .add_before_callback(before)
         .add_after_callback(async_after)
@@ -148,7 +148,7 @@ async def test_task_run_from_queue(output: CapLines):
     scripts = ["echo ok"]
     """).tool.foremon
 
-    task = ForemonTask(conf)
+    task = ScriptTask(conf)
     queue = asyncio.Queue()
 
     queue.put_nowait(task.run())
@@ -177,8 +177,8 @@ async def test_task_run_from_queueiter(output: CapLines):
 
     queue = asyncio.Queue()
 
-    queue.put_nowait(ForemonTask(conf).run())
-    queue.put_nowait(ForemonTask(conf.configs[0]).run())
+    queue.put_nowait(ScriptTask(conf).run())
+    queue.put_nowait(ScriptTask(conf.configs[0]).run())
     queue.put_nowait(None)
 
     async for coro in queueiter(queue):
@@ -202,7 +202,7 @@ def test_task_add_monitor_duplicate():
 
     from foremon.monitor import Monitor
 
-    task = ForemonTask(conf)
+    task = ScriptTask(conf)
     mon = Monitor()
 
     mon.add_task(task)
@@ -222,7 +222,20 @@ async def test_task_passes_environment(output: CapLines, monkeypatch):
     MYVAR = "test123"
     """).tool.foremon
 
-    await ForemonTask(conf).run()
+    await ScriptTask(conf).run()
 
     output.stdout_expect("DATA=test123")
     output.stdout_expect("DATA=test456")
+
+async def test_task_callback_throws(output: CapLines):
+    conf = PyProjectConfig.parse_toml("""
+    [tool.foremon]
+    scripts = ["echo test"]
+    """).tool.foremon
+
+    def thrower(*args):
+        raise ForemonError('error')
+
+    await ScriptTask(conf).add_before_callback(thrower).run()
+
+    output.stderr_append('Error from callback.*')

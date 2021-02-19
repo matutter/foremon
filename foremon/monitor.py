@@ -10,7 +10,7 @@ from watchdog.observers import Observer
 
 from foremon.config import ForemonConfig
 from foremon.errors import ForemonError
-
+from contextlib import contextmanager
 from .config import *
 from .display import *
 from .queue import *
@@ -19,7 +19,7 @@ from .task import *
 
 class Monitor:
 
-    loop: BaseEventLoop
+    _loop: BaseEventLoop
     observer: Observer
     pipe: Optional[TextIO]
     queue: Queue
@@ -29,6 +29,7 @@ class Monitor:
     active_tasks: Set[ForemonTask]
     all_tasks: Set[ForemonTask]
     is_terminating: bool
+    is_paused: bool
 
     def __init__(self, pipe=None, loop: BaseEventLoop = None):
 
@@ -38,12 +39,17 @@ class Monitor:
         self.stop_timeout = 5
         self.observer = Observer()
         self.pipe = pipe
-        self.loop = loop
+        self._loop = loop
         self.queue = Queue()
         self.current_files = set()
         self.active_tasks = set()
         self.all_tasks = set()
         self.is_terminating = False
+        self.is_paused = False
+
+    @property
+    def loop(self):
+        return self._loop
 
     def add_task(self, task: ForemonTask) -> 'Monitor':
 
@@ -96,19 +102,36 @@ class Monitor:
 
         return self
 
+    def reset(self):
+        self.observer.unschedule_all()
+        self.all_tasks.clear()
+
+    def set_pipe(self, pipe: TextIO):
+        # Pipe is usually only set None in testing due to a conflict with
+        # Click.testing.CliRunner's implementation.
+        try:
+            if self.pipe is not None:
+                self.loop.remove_reader(self.pipe)
+        except:
+            pass
+
+        self.pipe = pipe
+        if self.pipe is not None:
+            self.loop.add_reader(self.pipe, self._repl)
+
     def queue_all_tasks(self):
         for task in list(self.all_tasks):
             self.queue_task_event(task, None)
 
     def queue_task_event(self, task: ForemonTask, ev: Optional[FileSystemEvent] = None) -> None:
-        if self.is_terminating:
+        if self.is_terminating or self.is_paused:
             return
 
         task = self.loop.create_task(self.run_task(task, ev))
         self.loop.call_soon_threadsafe(self.queue.put_nowait, task)
 
     async def run_task(self, task: ForemonTask, trigger: Any) -> None:
-        if self.is_terminating:
+        if self.is_terminating or self.is_paused:
             return
 
         if not self.observer.is_alive():
@@ -116,6 +139,9 @@ class Monitor:
 
         # bounce until task is done
         if task in self.active_tasks:
+            return
+
+        if task.running:
             return
 
         self.active_tasks.add(task)
@@ -130,6 +156,17 @@ class Monitor:
         self.terminate_tasks()
         for task in list(self.all_tasks):
             self.loop.call_later(0.1, self.queue_task_event, task)
+
+    @contextmanager
+    def paused(self):
+        """
+        Stop running tasks while the monitor is paused
+        """
+        try:
+            self.is_paused = True
+            yield
+        finally:
+            self.is_paused = False
 
     def terminate_tasks(self):
         for task in list(self.all_tasks):
@@ -172,22 +209,15 @@ class Monitor:
                 try:
                     await task
                 except Exception as e:
-                    display_error('unhandled error', e)
+                    display_error('fatal error, shutting down ...', e)
                     break
 
         try:
-            # Pipe is usually only set None in testing due to a conflict with
-            # Click.testing.CliRunner's implementation.
-            if self.pipe is not None:
-                self.loop.add_reader(self.pipe, self._repl)
-
             await cradle()
-        except KeyboardInterrupt:
-            pass
-        except EOFError:
-            pass
+        except (KeyboardInterrupt, EOFError):
+            display_debug('stopping ...')
         except Exception as e:
-            display_error('an unhandled error occurred', e)
+            display_error('fatal error, shutting down ...', e)
 
         self.stop()
 
@@ -210,4 +240,5 @@ class Monitor:
             return
 
     def _repl(self):
-        self.handle_input(self.pipe.readline().lower())
+        line = self.pipe.readline().lower()
+        self.handle_input(line)
