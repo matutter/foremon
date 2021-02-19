@@ -79,6 +79,9 @@ def print_version(ctx: Context, param, value):
               multiple=True, default=['default'],
               help='Run the alias from the config.')
 @click.option('--dry-run', is_flag=True, hidden=True)
+@click.option('--reload/--no-reload', 'auto_reload',
+              is_flag=True, default=True,
+              help='Automatically reload the config if it changes.')
 @click.argument('args', callback=want_string, nargs=-1)
 def foremon(verbose: bool, args: str, scripts: List[str], version=None, **kwargs):
 

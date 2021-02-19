@@ -93,7 +93,7 @@ Just using `ctrl+c` has the same effect.
 
 # pyproject.toml
 
-> support for pyproject.toml is under development
+> support for pyproject.toml
 
 foremon supports _pyproject.toml_ configuration files. If the project contains a
 _pyproject.toml_ file foremon will automatically load defaults from the
@@ -102,6 +102,9 @@ _pyproject.toml_ file foremon will automatically load defaults from the
 
 All configuration settings are optional but foremon wont begin monitoring for
 changes if there are no `scripts` to run.
+
+foremon will also automatically reload the config file if it changes while
+foremon is running.
 
 ```ini
 [tool.foremon]
