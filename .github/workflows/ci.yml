@@ -236,7 +236,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPY_TOKEN }}
 
 
-  deploy:
+  upload-coverage:
     if: github.event_name == 'push' && github.repository == 'matutter/foremon'
     needs: [coverage]
     runs-on: ubuntu-latest
