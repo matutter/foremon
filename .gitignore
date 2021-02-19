@@ -13,3 +13,4 @@ tox.ini
 .tox/
 dist/
 .venv/
+coverage.xml

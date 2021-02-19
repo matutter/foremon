@@ -188,6 +188,14 @@ jobs:
       run: |
         pytest --cov=foremon
 
+    - run: coverage xml
+
+    - name: Store coverage artifacts for codecov
+      uses: actions/upload-artifact@v2
+      with:
+        name: coverage_files
+        path: coverage.xml
+
   deploy:
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'matutter/foremon'
     needs: [build, test, expect-test, coverage]
@@ -198,21 +206,22 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: "3.8"
 
-    - name: Download disk artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: pypi_files
-        path: dist
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel
         pip install twine
+
+    - name: Download dist artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: pypi_files
+        path: dist
 
     - name: Twine Check
       run: |
@@ -225,3 +234,25 @@ jobs:
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPY_TOKEN }}
+
+
+  deploy:
+    if: github.event_name == 'push' && github.repository == 'matutter/foremon'
+    needs: [coverage]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pypi
+    steps:
+
+    - name: Download coverage artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: coverage_files
+        path: "./"
+
+    - name: Upload coverage to CodeCov
+      uses: codecov/codecov-action@v1.2.1
+      with:
+        file: ./coverage.xml
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
