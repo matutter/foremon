@@ -3,9 +3,9 @@
 [tool.foremon]
 
     [tool.foremon.t1]
-    paths = ["trigger.txt"]
-    scripts = ["for i in 1 2 3; do echo T1 $i; sleep 1; done"]
+    paths = ["tests/input/$TEMPDIR/trigger.txt"]
+    scripts = ["for i in 1 2 3; do echo T1 $$ $i; sleep 1; done"]
 
     [tool.foremon.t2]
-    paths = ["trigger.txt"]
-    scripts = ["for i in 1 2 3 4 5 6; do echo T2 $i; sleep 1; done"]
+    paths = ["tests/input/$TEMPDIR/trigger.txt"]
+    scripts = ["for i in 1 2 3 4 5 6; do echo T2 $$ $i; sleep 1; done"]
