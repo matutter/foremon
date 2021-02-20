@@ -57,8 +57,8 @@ foremon -h
 ```
 
 Using foremon is simple. It will guess if you are running a module or python
-script and adjust the command-line arguments accordingly. To disable this
-feature, add the `-n` (`--no-guess`) option.
+script and adjust command-line arguments and the `PYTHONPATH` accordingly. To
+disable this feature, add the `-n` (`--no-guess`) option.
 
 ```bash
 # Executes `script.py`
@@ -67,9 +67,14 @@ foremon -n -- script.py
 # Executes `python3 script.py`
 foremon -- script.py
 
-# Does not try to guess command. `test` is ambiguous because it is a
-# shell-builtin and python module.
-foremon -- test -f script.py
+# Executes `python -m module` if module/__main__.py is present
+foremon module
+
+# Executes `python -c 'from lib import main; main()'` if only lib/__init__.py is present
+foremon lib:main
+
+# Execute `python -m module` and inserts `path/to` into PYTHONPATH
+foremon path/to/module
 ```
 
 foremon runs python scripts with the python interpreter of the environment it is

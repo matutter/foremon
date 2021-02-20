@@ -9,7 +9,7 @@ from foremon.config import *
 from foremon.display import *
 from foremon.monitor import Monitor
 from foremon.task import ForemonTask, ScriptTask
-from foremon.util import guess_args, relative_if_cwd
+from foremon.util import guess_and_update_scripts, guess_args, relative_if_cwd
 
 DEFAULT_CONFIG = op.join(os.getcwd(), "pyproject.toml")
 AUTO_RELOAD_ALIAS = 'foremon-auto-reload'
@@ -120,11 +120,12 @@ class Foremon:
         c: ForemonConfig = self.config
         o: ForemonOptions = self.options
 
-        if not o.no_guess:
-            args = list(map(guess_args, o.scripts))
-            c.scripts.extend(args)
-        else:
+        if o.scripts:
             c.scripts.extend(o.scripts)
+
+        if not o.no_guess:
+            guess_and_update_scripts(c)
+
         if o.unsafe:
             c.ignore_defaults.clear()
         if o.cwd:
