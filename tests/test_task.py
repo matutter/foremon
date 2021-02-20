@@ -5,7 +5,7 @@ import os
 import signal
 
 from foremon.config import *
-from foremon.display import display_info
+from foremon.display import display_info, display_success
 from foremon.task import ScriptTask
 from pydantic.error_wrappers import ValidationError
 
@@ -234,6 +234,7 @@ async def test_task_callback_throws(output: CapLines):
     """).tool.foremon
 
     def thrower(*args):
+        display_success("throwing exception for test ...")
         raise ForemonError('error')
 
     await ScriptTask(conf).add_before_callback(thrower).run()
