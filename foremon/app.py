@@ -178,6 +178,7 @@ class Foremon:
     def reload(self):
         # pause events
         with self.monitor.paused():
+            self.monitor.terminate_tasks()
             self.monitor.reset()
             self.load_config()
             self.reset_monitor()
