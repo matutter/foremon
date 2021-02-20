@@ -130,7 +130,7 @@ def test_cli_guess_script(noninteractive: MagicMock, cli):
     assert op.basename(sys.executable) in guess
 
 
-def test_cli_guess_module(noninteractive: MagicMock, cli):
+def test_cli_guess_module1(noninteractive: MagicMock, cli):
 
     cli(get_sample_file('module1'))
 
@@ -138,6 +138,18 @@ def test_cli_guess_module(noninteractive: MagicMock, cli):
     assert f
     guess = f.config.scripts[0]
     assert op.basename(sys.executable) + ' -m' in guess
+
+def test_cli_guess_module2(noninteractive: MagicMock, cli: CliProg):
+
+    arg = get_sample_file('module2') + ":main"
+    res = cli(arg)
+    assert res.exit_code == 0
+
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f
+
+    guess = f.config.scripts[0]
+    assert op.basename(sys.executable) + ' -c' in guess
 
 def test_cli_guess_modules_in_env(noninteractive: MagicMock, cli):
 
