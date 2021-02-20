@@ -9,7 +9,7 @@ from foremon.config import *
 from foremon.display import *
 from foremon.monitor import Monitor
 from foremon.task import ForemonTask, ScriptTask
-from foremon.util import guess_and_update_scripts, guess_args, relative_if_cwd
+from foremon.util import guess_and_update_scripts, relative_if_cwd
 
 DEFAULT_CONFIG = op.join(os.getcwd(), "pyproject.toml")
 AUTO_RELOAD_ALIAS = 'foremon-auto-reload'

@@ -87,33 +87,3 @@ def guess_and_update_scripts(config: ForemonConfig):
     if new_script:
         # Replace the original script
         config.scripts[-1] = new_script
-
-
-def guess_args(args: str) -> str:
-    if not args:
-        return args
-    argv = shlex.split(args)
-    if not argv:
-        return args
-
-    arg0: str = argv[0]
-
-    if arg0.endswith('.py'):
-        # Attempt to insert python interpreter before script path if script is not executable
-        is_x = os.access(arg0, os.X_OK)
-        if not is_x:
-            argv.insert(0, relative_if_cwd(sys.executable))
-        # Attempt to insert `python -m` before module name if arg[0] is dir
-    elif op.isdir(arg0):
-        init_file = op.join(arg0, '__main__.py')
-        if op.isfile(init_file):
-            argv = [relative_if_cwd(sys.executable), '-m'] + argv
-
-    else:
-        # Attempt run as module that isn't local
-        spec = find_spec(arg0)
-        if spec is not None:
-            argv = [relative_if_cwd(sys.executable), '-m'] + argv
-
-    # shlex.join not in py3.7
-    return " ".join(argv)
