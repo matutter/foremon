@@ -40,7 +40,7 @@ foremon will bootstrap your module or script with the arguments you normally
 pass to it:
 
 ```bash
-foremon [script or module] [args]
+foremon [script or module or library:func] [args]
 ```
 
 If your application uses options which conflict with foremon's options use the
