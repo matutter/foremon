@@ -97,9 +97,9 @@ foremon will wait a short period after changes are detected before restarting
 scripts. If a high volume of events are preventing a script from being restarted
 foremon will display a warning.
 
-To control how long foremon waits use the `-d/--dwell` option or set `dwell` in
-the config file. _Dwell_ is a fractional number of seconds to wait, and set to
-`0.1` (_100 milliseconds_) by default.
+To control how long foremon waits use the `-d/--dwell` option. _Dwell_ is a
+fractional number of seconds to wait and is set to `0.1` (_100 milliseconds_) by
+default.
 
 # Manual restart
 
