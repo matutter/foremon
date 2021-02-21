@@ -24,7 +24,7 @@ class EventContainer:
         if self.set_at != -1:
             self.reset_count += 1
 
-        self.set_at = time.time_ns()
+        self.set_at = time.time()
         self.args = args
 
         if self.reset_count < self.warn_after:
