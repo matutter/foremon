@@ -49,11 +49,17 @@ class Debounce:
         self._scheduled = None
 
     def submit(self, key: str, *args: List[Any]):
-        self.pending_events[key].set(args)
-        if self._scheduled:
-            self._scheduled.cancel()
-        self._scheduled = self.loop.call_later(
-            self.dwell, self.drain_events)
+        if self.dwell <= 0.0:
+            try:
+                self.callback(*args)
+            except:
+                pass
+        else:
+            self.pending_events[key].set(args)
+            if self._scheduled:
+                self._scheduled.cancel()
+            self._scheduled = self.loop.call_later(
+                self.dwell, self.drain_events)
 
     def submit_threadsafe(self, key: str, *args: List[Any]):
         self.loop.call_soon_threadsafe(self.submit, key, *args)

@@ -82,7 +82,7 @@ def print_version(ctx: Context, param, value):
 @click.option('--reload/--no-reload', 'auto_reload',
               is_flag=True, default=True,
               help='Automatically reload the config if it changes.')
-@click.option('-d', '--dwell', type=float,
+@click.option('-d', '--dwell', type=click.FloatRange(min=0.0, clamp=True),
               default=0.1, show_default=True,
               help='Dwell this long after a change is detect to restart a script.')
 @click.argument('args', callback=want_string, nargs=-1)
