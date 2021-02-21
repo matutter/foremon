@@ -2,6 +2,7 @@ import asyncio
 import errno
 import os.path as op
 from asyncio import BaseEventLoop, Queue
+from contextlib import contextmanager
 from functools import partial
 from typing import Any, List, Optional, Set, TextIO
 
@@ -9,8 +10,9 @@ from watchdog.events import FileSystemEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 from foremon.config import ForemonConfig
+from foremon.debounce import Debounce
 from foremon.errors import ForemonError
-from contextlib import contextmanager
+
 from .config import *
 from .display import *
 from .queue import *
@@ -21,6 +23,7 @@ class Monitor:
 
     _loop: BaseEventLoop
     observer: Observer
+    debounce: Debounce
     pipe: Optional[TextIO]
     queue: Queue
     stop_timeout: int
@@ -31,13 +34,14 @@ class Monitor:
     is_terminating: bool
     is_paused: bool
 
-    def __init__(self, pipe=None, loop: BaseEventLoop = None):
+    def __init__(self, dwell: float = 0.1, pipe=None, loop: BaseEventLoop = None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
 
         self.stop_timeout = 5
         self.observer = Observer()
+        self.debounce = Debounce(dwell, self.queue_task_event, loop=loop)
         self.pipe = pipe
         self._loop = loop
         self.queue = Queue()
@@ -78,7 +82,8 @@ class Monitor:
             raise ForemonError(
                 'no valid paths specified, cannot add watch task', errno.ENOENT)
 
-        callback = partial(self.queue_task_event, task)
+        # callback = partial(self.queue_task_event, task)
+        callback = partial(self.debounce.submit_threadsafe, task.name, task)
 
         handler = PatternMatchingEventHandler(
             patterns=conf.patterns,
@@ -127,8 +132,10 @@ class Monitor:
         if self.is_terminating or self.is_paused:
             return
 
-        task = self.loop.create_task(self.run_task(task, ev))
-        self.loop.call_soon_threadsafe(self.queue.put_nowait, task)
+        if task.running:
+            task.terminate()
+
+        self.queue.put_nowait(self.run_task(task, ev))
 
     async def run_task(self, task: ForemonTask, trigger: Any) -> None:
         if self.is_terminating or self.is_paused:
@@ -137,11 +144,7 @@ class Monitor:
         if not self.observer.is_alive():
             return
 
-        # bounce until task is done
-        if task in self.active_tasks:
-            return
-
-        if task.running:
+        if task.running or task in self.active_tasks:
             return
 
         self.active_tasks.add(task)

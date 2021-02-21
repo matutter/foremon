@@ -82,6 +82,9 @@ def print_version(ctx: Context, param, value):
 @click.option('--reload/--no-reload', 'auto_reload',
               is_flag=True, default=True,
               help='Automatically reload the config if it changes.')
+@click.option('-d', '--dwell', type=float,
+              default=0.1, show_default=True,
+              help='Dwell this long after a change is detect to restart a script.')
 @click.argument('args', callback=want_string, nargs=-1)
 def foremon(verbose: bool, args: str, scripts: List[str], version=None, **kwargs):
 
