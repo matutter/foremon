@@ -92,6 +92,20 @@ def test_cli_unsafe(noninteractive: MagicMock, cli):
     assert f.config == t.config
 
 
+def test_cli_dwell(noninteractive: MagicMock, cli):
+
+    cli('-d 1.5 -- true')
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f.options.dwell == 1.5
+
+
+def test_cli_dwell_clamps(noninteractive: MagicMock, cli):
+
+    cli('-d -1.5 -- true')
+    f: Foremon = noninteractive.call_args[0][0]
+    assert f.options.dwell == 0.0
+
+
 def test_cli_ignore(noninteractive: MagicMock, cli):
 
     cli('-V --dry-run -i "*.test1" -i "*.test2" -- true')
@@ -139,6 +153,7 @@ def test_cli_guess_module1(noninteractive: MagicMock, cli):
     guess = f.config.scripts[0]
     assert op.basename(sys.executable) + ' -m' in guess
 
+
 def test_cli_guess_module2(noninteractive: MagicMock, cli: CliProg):
 
     arg = get_sample_file('module2') + ":main"
@@ -151,6 +166,7 @@ def test_cli_guess_module2(noninteractive: MagicMock, cli: CliProg):
     guess = f.config.scripts[0]
     assert op.basename(sys.executable) + ' -c' in guess
 
+
 def test_cli_guess_modules_in_env(noninteractive: MagicMock, cli):
 
     cli('pytest --markers')
@@ -159,6 +175,7 @@ def test_cli_guess_modules_in_env(noninteractive: MagicMock, cli):
     assert f
     guess = f.config.scripts[0]
     assert op.basename(sys.executable) + ' -m' in guess
+
 
 def test_cli_config_bad_path(noninteractive, cli, output: CapLines, tempfiles: Tempfiles):
 
@@ -208,7 +225,7 @@ def test_cli_invoke_as_module(mocker: MagicMock):
     name: MagicMock = mocker.MagicMock(name='set_display_name')
     mocker.patch('foremon.display.set_display_name', name, lambda _: None)
 
-    old_name =  get_display_name()
+    old_name = get_display_name()
     from foremon.cli import main
     main()
 

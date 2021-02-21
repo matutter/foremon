@@ -5,7 +5,7 @@ from asyncio.events import TimerHandle
 from collections import defaultdict
 from typing import Any, Callable, DefaultDict, List, Optional
 
-from foremon.display import display_warning
+from foremon.display import display_error, display_warning
 
 
 class EventContainer:
@@ -30,9 +30,9 @@ class EventContainer:
         if self.reset_count < self.warn_after:
             return
 
-        display_warning('detected high events volume - suppressed',
-                        self.reset_count, 'events')
         self.warn_after += 100
+        display_warning('detected high event volume - suppressed',
+                        self.reset_count, 'events')
 
 
 class Debounce:
@@ -50,10 +50,7 @@ class Debounce:
 
     def submit(self, key: str, *args: List[Any]):
         if self.dwell <= 0.0:
-            try:
-                self.callback(*args)
-            except:
-                pass
+            self.callback(*args)
         else:
             self.pending_events[key].set(args)
             if self._scheduled:
@@ -73,5 +70,4 @@ class Debounce:
             try:
                 self.callback(*cont.args)
             except Exception as e:
-                print('drain_events', e)
-                pass
+                display_error('drain callback error', e)

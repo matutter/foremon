@@ -1,8 +1,8 @@
 import asyncio
 import errno
+from foremon.debounce import Debounce
 import os.path as op
 from asyncio import BaseEventLoop, Queue
-from contextlib import contextmanager
 from functools import partial
 from typing import Any, List, Optional, Set, TextIO
 
@@ -10,9 +10,8 @@ from watchdog.events import FileSystemEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 from foremon.config import ForemonConfig
-from foremon.debounce import Debounce
 from foremon.errors import ForemonError
-
+from contextlib import contextmanager
 from .config import *
 from .display import *
 from .queue import *
@@ -135,7 +134,7 @@ class Monitor:
         if task.running:
             task.terminate()
 
-        self.queue.put_nowait(self.run_task(task, ev))
+        self.loop.call_soon_threadsafe(self.queue.put_nowait, lambda: self.run_task(task, ev))
 
     async def run_task(self, task: ForemonTask, trigger: Any) -> None:
         if self.is_terminating or self.is_paused:
@@ -210,7 +209,13 @@ class Monitor:
         async def cradle():
             async for task in queueiter(self.queue):
                 try:
-                    await task
+                    while task:
+                        if asyncio.iscoroutinefunction(task):
+                            task = await task()
+                        elif asyncio.iscoroutine(task):
+                            task = await task
+                        elif callable(task):
+                            task = task()
                 except Exception as e:
                     display_error('fatal error, shutting down ...', e)
                     break

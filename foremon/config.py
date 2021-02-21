@@ -138,7 +138,7 @@ class ForemonOptions(BaseModel):
     use_all: bool = Field(False)
     verbose: bool = Field(False)
     auto_reload: bool = Field(True)
-    dwell:float = Field(0.1)
+    dwell: float = Field(0.1)
 
 
 __all__ = ['PyProjectConfig', 'ToolConfig', 'ForemonConfig', 'Events', 'ForemonOptions']
