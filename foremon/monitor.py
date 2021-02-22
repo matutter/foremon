@@ -81,8 +81,7 @@ class Monitor:
             raise ForemonError(
                 'no valid paths specified, cannot add watch task', errno.ENOENT)
 
-        # callback = partial(self.queue_task_event, task)
-        callback = partial(self.debounce.submit_threadsafe, task.name, task)
+        callback = partial(self.debounce.submit_threadsafe, task)
 
         handler = PatternMatchingEventHandler(
             patterns=conf.patterns,
@@ -134,7 +133,8 @@ class Monitor:
         if task.running:
             task.terminate()
 
-        self.loop.call_soon_threadsafe(self.queue.put_nowait, lambda: self.run_task(task, ev))
+        self.loop.call_soon_threadsafe(
+            self.queue.put_nowait, lambda: self.run_task(task, ev))
 
     async def run_task(self, task: ForemonTask, trigger: Any) -> None:
         if self.is_terminating or self.is_paused:
