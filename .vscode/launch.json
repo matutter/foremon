@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "args": ["-k", "test_config_order", "-s"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "name": "PyTest",
+            "program": "${workspaceFolder}/.venv/bin/pytest",
+            "request": "launch",
+            "type": "python",
+          },
+    ]
+}
