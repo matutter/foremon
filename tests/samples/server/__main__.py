@@ -10,4 +10,4 @@ if __name__ == '__main__':
     try:
         run()
     except KeyboardInterrupt:
-        print('\rstopped')
+        print('\rserver stopped')

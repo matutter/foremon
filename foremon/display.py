@@ -49,20 +49,20 @@ def colored(*args: str, color: Optional[str] = None):
     return msg
 
 
-def display(msg: str, color: Optional[str] = None):
+def display(*msg: str, color: Optional[str] = None):
     prefix = get_display_name()
     if prefix:
         prefix = '[' + prefix + ']'
-    text = colored(prefix, msg, color=color) + "\n"
+    text = colored(prefix, *msg, color=color) + "\n"
     display_get_writer()(text)
 
 
-def display_warning(msg: str):
-    display(msg, color='yellow')
+def display_warning(*msg: str):
+    display(*msg, color='yellow')
 
 
-def display_info(msg: str):
-    display(msg, color='cyan')
+def display_info(*msg: str):
+    display(*msg, color='cyan')
 
 
 def display_error(msg: str, e: Exception = None):
@@ -74,8 +74,8 @@ def display_error(msg: str, e: Exception = None):
     display(msg, color='red')
 
 def display_success(*msg: Any):
-  display(' '.join(map(str, msg)), 'green')
+  display(*msg, color='green')
 
 def display_debug(*msg: Any):
   if display_verbose():
-    display(' '.join(map(str, msg)), 'blue')
+    display(*msg, color='blue')

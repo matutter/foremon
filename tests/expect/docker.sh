@@ -15,18 +15,31 @@ fi
 
 cd $root
 
-docker run -it --rm \
-    -e TERM=$TERM \
-    -v $root/config:/config \
-    -v $root/tests:/tests \
-    -v $root/dist:/dist \
-    --entrypoint bash \
-    python:$PYTHON_VERSION \
-    -c '
-apt-get update -y -q
-apt-get install -y -q expect
-pip install /dist/foremon*.tar.gz
-for f in `ls -1 tests/expect/*.exp`; do
-    expect $f
-done
-'
+if test -d dist/; then
+    rm dist/ -rf
+fi
+
+if python -m build; then
+
+    docker run -it --rm \
+        -e TEMPDIR=/tmp \
+        -e TERM=$TERM \
+        -v $root/config:/config \
+        -v $root/tests:/tests \
+        -v $root/dist:/dist \
+        --entrypoint bash \
+        python:$PYTHON_VERSION \
+        -c '
+    apt-get update -y -q
+    apt-get install -y -q expect
+    pip install /dist/foremon*.tar.gz
+    for f in `ls -1 tests/expect/*.exp`; do
+        expect $f
+    done
+    '
+
+    exit $?
+else
+    echo "build failed"
+    exit 1
+fi

@@ -50,10 +50,10 @@ If your application uses options which conflict with foremon's options use the
 foremon -- mymodules --version
 ```
 
-For CLI options, use `-h` or `--help`:
+For CLI options `--help`:
 
 ```bash
-foremon -h
+foremon --help
 ```
 
 Using foremon is simple. It will guess if you are running a module or python
@@ -89,9 +89,17 @@ found, will run scripts specified in the `[tool.foremon]` section
 
 # Automatic re-running
 
-When file changes are detected foremon will restart the script. If scripts are
-still running when the change is detected, foremon will ignore the event until
-the script completes and a new change occurs.
+When file changes are detected foremon will restart the script. If a script is
+running when the change is detected foremon will terminate the script before
+running it again.
+
+foremon will wait a short period after changes are detected before restarting
+scripts. If a high volume of events are preventing a script from being restarted
+foremon will display a warning.
+
+To control how long foremon waits use the `-d/--dwell` option. _Dwell_ is a
+fractional number of seconds to wait and is set to `0.1` (_100 milliseconds_) by
+default.
 
 # Manual restart
 
@@ -104,8 +112,6 @@ foremon can also be shutdown gracefully by typing `exit` followed by `enter`.
 Just using `ctrl+c` has the same effect.
 
 # pyproject.toml
-
-> support for pyproject.toml
 
 foremon supports _pyproject.toml_ configuration files. If the project contains a
 _pyproject.toml_ file foremon will automatically load defaults from the
@@ -128,11 +134,10 @@ scripts = ["pytest --cov=myproj"]
 skip = true
 # Run script like they're in this directory
 cwd = "./"
-# Key-Value paris of environment variables
-[tool.foremon.environment]
-TERM = "MONO"
 # Exit code to expect for a successful exit
 returncode = 0
+# Amount of time after an event is received and a script is restarted
+dwell = 1.0
 # Signal to send if the process should be terminated
 term_signal = "SIGTERM"
 # Set to false to turn on case-sensitive pattern matching
@@ -149,6 +154,9 @@ paths = ["src/"]
 recursive = true
 # List of events - created, deleted, moved, modified
 events = ["created", "modified"]
+# Environment overrides
+[tool.foremon.environment]
+TERM = "MONO"
 ```
 
 All subsections contain the same options.

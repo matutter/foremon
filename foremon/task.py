@@ -148,7 +148,7 @@ class ScriptTask(ForemonTask):
             try:
                 self.process = await create_subprocess_shell(
                     script, stdout=sys.stdout, stderr=sys.stderr,
-                    shell=True, env=self.config.get_env())
+                    shell=True, env=self.config.get_env(), preexec_fn=os.setsid)
 
                 last_pid = self.process.pid
 
@@ -182,7 +182,8 @@ class ScriptTask(ForemonTask):
             return
         self.pending_signals.append(sig)
         try:
-            self.process.send_signal(sig)
+            gid = os.getpgid(self.process.pid)
+            os.killpg(gid, sig)
         except ProcessLookupError as e:
             # He's dead, Jim
             pass

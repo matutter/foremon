@@ -1,8 +1,13 @@
 import signal
+from itertools import count
+
+from _pytest import config
 
 from foremon.config import *
+from foremon.config import Increment
 from foremon.display import *
 from pydantic.error_wrappers import ValidationError
+from pytest_mock.plugin import MockerFixture
 
 from .fixtures import *
 
@@ -151,6 +156,7 @@ def test_config_defaults():
     assert conf.recursive == True
     assert conf.events == DEFAULT_EVENTS
 
+
 def test_config_expandenv(monkeypatch):
 
     from secrets import token_hex
@@ -167,3 +173,56 @@ def test_config_expandenv(monkeypatch):
 
     assert conf.paths[0] == token
     assert conf.scripts[0] == "$MYVAR"
+
+
+def test_config_order(mocker: MockerFixture):
+
+    mocker.patch('foremon.config.Increment', count(start=0))
+
+    conf = PyProjectConfig.parse_toml("""
+    [tool.foremon]
+    order = 999
+        [tool.foremon.z]
+        [tool.foremon.y]
+        [tool.foremon.x]
+        order = -999
+    """).tool.foremon
+
+    expect = ['x', 'z', 'y', '']
+    result = [c.alias for c in conf.get_configs()]
+
+    assert result == expect
+    assert conf.order == 999
+
+
+def test_config_order_set_explicit(mocker: MockerFixture):
+
+    conf = PyProjectConfig.parse_toml("""
+    [tool.foremon]            # 1
+        [tool.foremon.z]      # 2
+        [tool.foremon.z.zz]   # 3
+        [tool.foremon.y]      # 4
+        [tool.foremon.y.yy]   # 5
+        [tool.foremon.x]      # 6
+        order = 999
+        [tool.foremon.x.xx]   # 7
+    """).tool.foremon
+
+    # This returns a sorted list
+    configs = conf.get_configs()
+
+    expected = {
+        '': 0,
+        'z': 1,
+        'zz': 2,
+        'y': 3,
+        'yy': 4,
+        'x': 999,
+        'xx': 6,
+    }
+
+    for config in configs:
+        result = config.order
+        expect = expected[config.alias]
+        # print(config.alias, result, expect)
+        assert config.order == expect
