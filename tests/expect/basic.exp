@@ -8,7 +8,8 @@ catch {set EXP_TMP $env(TEMPDIR)}
 set EXP_CONFIG config
 catch {set EXP_CONFIG $env(CONFIGDIR)}
 
-set COLS [exec tput cols]
+set COLS 80
+catch { set COLS [exec tput cols] }
 set LINE [exec bash -c "printf '=%.0s' {1..$COLS}"]
 
 set timeout 10
