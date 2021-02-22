@@ -22,22 +22,8 @@ expect eof
 spawn foremon --version
 expect eof
 
-# Start Test 1
-
-# will trigger test2 later
-spawn bash -c "
-    sleep 4
-    if touch $EXP_TMP/EXPECT_TEST2; then
-        echo `date +%s` - OK - Set trigger $EXP_TMP/EXPECT_TEST2
-    else
-        echo `date +%s` - FAIL - Trigger was not set
-    fi
-"
-expect_after {
-    eof
-}
-
 spawn foremon -V -f $EXP_CONFIG/sanity-check.toml -a test1 -a test2
+set FOREMON $spawn_id
 expect_after eof {
     send_user "\n$LINE\n"
     send_user "[exec date +%s] - DONE - SUCCESS\n"
@@ -65,6 +51,19 @@ expect "clean exit*"
 
 send_user "\n$LINE\n"
 send_user "[exec date +%s] - WORKING - Waiting for file change event ...\n"
+
+# will trigger soon
+spawn bash -c "
+    sleep 1
+    if touch $EXP_TMP/EXPECT_TEST2; then
+        echo `date +%s` - OK - Set trigger $EXP_TMP/EXPECT_TEST2
+    else
+        echo `date +%s` - FAIL - Trigger was not set
+    fi
+"
+set TRIGGER_PROC $spawn_id
+set spawn_id $FOREMON
+
 expect {
     "timeout" {
         send_user "\n$LINE\n"
